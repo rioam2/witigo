@@ -1,0 +1,15 @@
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  cli:
+    cmds:
+      - go run ./cmd/main.go {{.CLI_ARGS}}
+  build:
+    cmds:
+      - go build -o ./bin/witigo ./cmd/main.go
+  test:
+    cmds:
+      - go test ./test
