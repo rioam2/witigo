@@ -1,10 +1,15 @@
 package witigo
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"reflect"
 )
+
+var CANONICAL_FLOAT32_NAN = []byte{0x7f, 0xc0, 0x00, 0x00}
+var CANONICAL_FLOAT64_NAN = []byte{0x7f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
 const (
 	ErrAbiLoadIntTypeMismatch = "type mismatch: expected %s, got %s"
@@ -52,6 +57,13 @@ func AbiLoadFloat[T float32 | float64](opts AbiOptions, ptr int32, t AbiTypeDefi
 	data, err := opts.Memory.Read(ptr, byteSize)
 	if err != nil {
 		return value, err
+	}
+
+	if t.Type() == AbiTypeF32 && bytes.Equal(data, CANONICAL_FLOAT32_NAN) {
+		return T(math.NaN()), nil
+	}
+	if t.Type() == AbiTypeF64 && bytes.Equal(data, CANONICAL_FLOAT64_NAN) {
+		return T(math.NaN()), nil
 	}
 
 	bytesDecoded, err := binary.Decode(data, binary.LittleEndian, &value)
