@@ -3,10 +3,31 @@ package witigo
 type StringEncoding string
 
 const (
-	StringEncodingUTF8        StringEncoding = "utf8"
-	StringEncodingUTF16       StringEncoding = "utf16"
-	StringEncodingLatin1Utf16 StringEncoding = "latin1+utf16"
+	StringEncodingUTF8  StringEncoding = "utf8"
+	StringEncodingUTF16 StringEncoding = "utf16"
 )
+
+func (e StringEncoding) CodeUnitSize() int32 {
+	switch e {
+	case StringEncodingUTF8:
+		return 1
+	case StringEncodingUTF16:
+		return 2
+	default:
+		return 1
+	}
+}
+
+func (e StringEncoding) Alignment() int32 {
+	switch e {
+	case StringEncodingUTF8:
+		return 1
+	case StringEncodingUTF16:
+		return 2
+	default:
+		return 1
+	}
+}
 
 type AbiOptions struct {
 	StringEncoding StringEncoding

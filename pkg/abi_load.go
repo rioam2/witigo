@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+
+	"golang.org/x/text/encoding/unicode"
 )
 
 var CANONICAL_FLOAT32_NAN = []byte{0x7f, 0xc0, 0x00, 0x00}
@@ -118,4 +120,59 @@ func AbiLoadChar(opts AbiOptions, ptr int32, t AbiTypeDefinition) (rune, error) 
 		return value, fmt.Errorf(ErrByteSizeMismatch, byteSize, bytesDecoded)
 	}
 	return value, nil
+}
+
+func AbiLoadString(opts AbiOptions, ptr int32, t AbiTypeDefinition) (string, error) {
+	if t.Type() != AbiTypeString {
+		return "", fmt.Errorf("invalid type %s for AbiLoadString", t.String())
+	}
+
+	strEncoding := opts.StringEncoding
+	strAlignment := strEncoding.Alignment()
+	taggedCodeUnitSize := strEncoding.CodeUnitSize()
+
+	byteSize := int32(t.SizeInBytes())
+	if byteSize != 8 {
+		return "", fmt.Errorf("expected string type to have 8 bytes, got %d bytes", byteSize)
+	}
+
+	data, err := opts.Memory.Read(ptr, byteSize)
+	if err != nil {
+		return "", err
+	}
+
+	strPtr := int32(binary.LittleEndian.Uint32(data[0:4]))
+	taggedCodeUnits := int32(binary.LittleEndian.Uint32(data[4:8]))
+	strByteLength := taggedCodeUnits * int32(taggedCodeUnitSize)
+
+	if strPtr == 0 || taggedCodeUnits < 0 {
+		return "", fmt.Errorf("invalid string pointer or tagged code units: ptr=%d, taggedCodeUnits=%d", strPtr, taggedCodeUnits)
+	}
+
+	if strPtr != int32(AlignTo(int(strPtr), int(strAlignment))) {
+		return "", fmt.Errorf("string pointer %d is not aligned to %d bytes", strPtr, strAlignment)
+	}
+
+	if strPtr+strByteLength > opts.Memory.Size() {
+		return "", fmt.Errorf("string pointer %d with length %d exceeds memory size %d", strPtr, strByteLength, opts.Memory.Size())
+	}
+
+	strData, err := opts.Memory.Read(strPtr, strByteLength)
+	if err != nil {
+		return "", err
+	}
+
+	switch strEncoding {
+	case StringEncodingUTF8:
+		return string(strData), nil
+	case StringEncodingUTF16:
+		decoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewDecoder()
+		str, err := decoder.String(string(strData))
+		if err != nil {
+			return "", err
+		}
+		return str, nil
+	default:
+		return "", fmt.Errorf("unsupported string encoding: %s", strEncoding)
+	}
 }

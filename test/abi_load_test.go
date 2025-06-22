@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	witigo "github.com/rioam2/witigo/pkg"
+	"golang.org/x/text/encoding/unicode"
 )
 
 type FakeMemory struct {
@@ -369,6 +370,144 @@ func TestAbiLoadChar(t *testing.T) {
 			}
 			if result != tt.value {
 				t.Fatalf("Expected result to be %v (%U), got %v (%U)", tt.value, tt.value, result, result)
+			}
+		})
+	}
+}
+func TestAbiLoadString(t *testing.T) {
+	tests := []struct {
+		name           string
+		typeDef        witigo.AbiTypeDefinition
+		value          string
+		ptrOffset      int
+		dataOffset     int
+		stringEncoding witigo.StringEncoding
+	}{
+		{
+			name:           "string(\"hello\") ptr offset 0, data offset 100, UTF8",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "hello",
+			ptrOffset:      0,
+			dataOffset:     100,
+			stringEncoding: witigo.StringEncodingUTF8,
+		},
+		{
+			name:           "string(\"世界\") ptr offset 8, data offset 120, UTF8",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "世界", // Unicode CJK characters
+			ptrOffset:      8,
+			dataOffset:     120,
+			stringEncoding: witigo.StringEncodingUTF8,
+		},
+		{
+			name:           "string(\"😀👍🚀\") ptr offset 16, data offset 140, UTF8",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "😀👍🚀", // Unicode emojis
+			ptrOffset:      16,
+			dataOffset:     140,
+			stringEncoding: witigo.StringEncodingUTF8,
+		},
+		{
+			name:           "string(\"Café ñandú\") ptr offset 24, data offset 160, UTF8",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "Café ñandú", // Unicode with diacritics
+			ptrOffset:      24,
+			dataOffset:     160,
+			stringEncoding: witigo.StringEncodingUTF8,
+		},
+		{
+			name:           "empty string ptr offset 32, data offset 200, UTF8",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "",
+			ptrOffset:      32,
+			dataOffset:     200,
+			stringEncoding: witigo.StringEncodingUTF8,
+		},
+		{
+			name:           "long string ptr offset 40, data offset 220, UTF8",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "This is a longer string to test handling of strings with more characters",
+			ptrOffset:      40,
+			dataOffset:     220,
+			stringEncoding: witigo.StringEncodingUTF8,
+		},
+		{
+			name:           "string(\"hello\") ptr offset 300, data offset 400, UTF16",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "hello",
+			ptrOffset:      300,
+			dataOffset:     400,
+			stringEncoding: witigo.StringEncodingUTF16,
+		},
+		{
+			name:           "string(\"世界\") ptr offset 308, data offset 420, UTF16",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "世界", // Unicode CJK characters
+			ptrOffset:      308,
+			dataOffset:     420,
+			stringEncoding: witigo.StringEncodingUTF16,
+		},
+		{
+			name:           "string(\"😀👍🚀\") ptr offset 316, data offset 440, UTF16",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "😀👍🚀", // Unicode emojis
+			ptrOffset:      316,
+			dataOffset:     440,
+			stringEncoding: witigo.StringEncodingUTF16,
+		},
+		{
+			name:           "string(\"Café ñandú\") ptr offset 324, data offset 460, UTF16",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "Café ñandú", // Unicode with diacritics
+			ptrOffset:      324,
+			dataOffset:     460,
+			stringEncoding: witigo.StringEncodingUTF16,
+		},
+		{
+			name:           "empty string ptr offset 332, data offset 500, UTF16",
+			typeDef:        witigo.NewAbiTypeDefinitionString(),
+			value:          "",
+			ptrOffset:      332,
+			dataOffset:     500,
+			stringEncoding: witigo.StringEncodingUTF16,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memoryBuffer := make([]byte, 1024)
+			abiOptions := witigo.AbiOptions{
+				StringEncoding: tt.stringEncoding,
+				Memory:         createMemory(memoryBuffer),
+			}
+
+			// Write string data to memory based on encoding
+			var taggedCodeUnits int
+			if tt.stringEncoding == witigo.StringEncodingUTF16 {
+				// Convert tt.value to UTF-16 and write to memory
+				encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
+				utf16String, err := encoder.String(tt.value)
+				taggedCodeUnits = len(utf16String) / 2
+				if err != nil {
+					t.Fatalf("Failed to encode string to UTF-16: %v", err)
+				}
+				copy(memoryBuffer[tt.dataOffset:], utf16String)
+			} else {
+				// Write UTF-8 string data to memory
+				taggedCodeUnits = len(tt.value)
+				copy(memoryBuffer[tt.dataOffset:], []byte(tt.value))
+			}
+
+			// Write string pointer structure: [ptr:4bytes][len:4bytes]
+			binary.LittleEndian.PutUint32(memoryBuffer[tt.ptrOffset:tt.ptrOffset+4], uint32(tt.dataOffset))
+			binary.LittleEndian.PutUint32(memoryBuffer[tt.ptrOffset+4:tt.ptrOffset+8], uint32(taggedCodeUnits))
+
+			result, err := witigo.AbiLoadString(abiOptions, int32(tt.ptrOffset), tt.typeDef)
+			if err != nil {
+				t.Fatalf("AbiLoadString failed: %v", err)
+			}
+			if result != tt.value {
+				t.Fatalf("Expected result to be %q, got %q", tt.value, result)
 			}
 		})
 	}
