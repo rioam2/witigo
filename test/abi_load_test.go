@@ -278,3 +278,63 @@ func TestAbiLoadBool(t *testing.T) {
 		})
 	}
 }
+
+func TestAbiLoadChar(t *testing.T) {
+	tests := []struct {
+		name    string
+		typeDef witigo.AbiTypeDefinition
+		value   rune
+		offset  int
+	}{
+		{
+			name:    "char('A') offset 0",
+			typeDef: witigo.NewAbiTypeDefinitionChar(),
+			value:   'A',
+			offset:  0,
+		},
+		{
+			name:    "char('火') offset 4", // Unicode CJK character
+			typeDef: witigo.NewAbiTypeDefinitionChar(),
+			value:   '火',
+			offset:  4,
+		},
+		{
+			name:    "char('😀') offset 8", // Unicode emoji
+			typeDef: witigo.NewAbiTypeDefinitionChar(),
+			value:   '😀',
+			offset:  8,
+		},
+		{
+			name:    "char('ñ') offset 16", // Unicode with diacritic
+			typeDef: witigo.NewAbiTypeDefinitionChar(),
+			value:   'ñ',
+			offset:  16,
+		},
+		{
+			name:    "char(0) offset 20", // Null character
+			typeDef: witigo.NewAbiTypeDefinitionChar(),
+			value:   0,
+			offset:  20,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memoryBuffer := make([]byte, 1024)
+			abiOptions := witigo.AbiOptions{
+				StringEncoding: witigo.StringEncodingUTF8,
+				Memory:         createMemory(memoryBuffer),
+			}
+
+			binary.Encode(memoryBuffer[tt.offset:], binary.LittleEndian, tt.value)
+
+			result, err := witigo.AbiLoadChar(abiOptions, int32(tt.offset), tt.typeDef)
+			if err != nil {
+				t.Fatalf("AbiLoadChar failed: %v", err)
+			}
+			if result != tt.value {
+				t.Fatalf("Expected result to be %v (%U), got %v (%U)", tt.value, tt.value, result, result)
+			}
+		})
+	}
+}

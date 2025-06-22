@@ -108,7 +108,7 @@ func (a AbiTypeDefinitionPrimitive) Properties() AbiTypeProperties {
 	case AbiTypeF64:
 		reflectType = reflect.Float64
 	case AbiTypeChar:
-		reflectType = reflect.Uint8
+		reflectType = reflect.Int32
 	case AbiTypeString, AbiTypeErrorContext:
 		reflectType = reflect.String
 

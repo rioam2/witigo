@@ -85,3 +85,25 @@ func AbiLoadBool(opts AbiOptions, ptr int32, t AbiTypeDefinition) (bool, error) 
 	}
 	return value, nil
 }
+
+func AbiLoadChar(opts AbiOptions, ptr int32, t AbiTypeDefinition) (rune, error) {
+	if t.Type() != AbiTypeChar {
+		return 0, fmt.Errorf("invalid type %s for AbiLoadChar", t.String())
+	}
+
+	byteSize := int32(t.SizeInBytes())
+	var value rune
+	data, err := opts.Memory.Read(ptr, byteSize)
+	if err != nil {
+		return value, err
+	}
+
+	bytesDecoded, err := binary.Decode(data, binary.LittleEndian, &value)
+	if err != nil {
+		return value, err
+	}
+	if int32(bytesDecoded) != byteSize {
+		return value, fmt.Errorf(ErrByteSizeMismatch, byteSize, bytesDecoded)
+	}
+	return value, nil
+}
