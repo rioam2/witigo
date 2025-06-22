@@ -1,6 +1,9 @@
 package witigo
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
 const (
 	ErrNilListElemType   = "invalid list element type: cannot be nil"
@@ -28,8 +31,9 @@ func (a AbiTypeDefinitionList) Type() AbiType {
 
 func (a AbiTypeDefinitionList) Properties() AbiTypeProperties {
 	return AbiTypeProperties{
-		SubTypes: []AbiTypeDefinition{a.elemType},
-		Length:   a.maybeLength,
+		SubTypes:    []AbiTypeDefinition{a.elemType},
+		Length:      a.maybeLength,
+		ReflectType: reflect.Slice,
 	}
 }
 

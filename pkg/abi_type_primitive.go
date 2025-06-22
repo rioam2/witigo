@@ -1,5 +1,7 @@
 package witigo
 
+import "reflect"
+
 type AbiTypeDefinitionPrimitive struct {
 	t AbiType
 }
@@ -77,9 +79,40 @@ func (a AbiTypeDefinitionPrimitive) Type() AbiType {
 }
 
 func (a AbiTypeDefinitionPrimitive) Properties() AbiTypeProperties {
+	var reflectType reflect.Kind
+	switch a.t {
+	case AbiTypeBool:
+		reflectType = reflect.Bool
+	case AbiTypeU8:
+		reflectType = reflect.Uint8
+	case AbiTypeS8:
+		reflectType = reflect.Int8
+	case AbiTypeU16:
+		reflectType = reflect.Uint16
+	case AbiTypeS16:
+		reflectType = reflect.Int16
+	case AbiTypeU32:
+		reflectType = reflect.Uint32
+	case AbiTypeS32:
+		reflectType = reflect.Int32
+	case AbiTypeF32:
+		reflectType = reflect.Float32
+	case AbiTypeU64:
+		reflectType = reflect.Uint64
+	case AbiTypeS64:
+		reflectType = reflect.Int64
+	case AbiTypeF64:
+		reflectType = reflect.Float64
+	case AbiTypeChar:
+		reflectType = reflect.Uint8
+	case AbiTypeString, AbiTypeErrorContext:
+		reflectType = reflect.String
+
+	}
 	return AbiTypeProperties{
-		SubTypes: nil,
-		Length:   nil,
+		SubTypes:    nil,
+		Length:      nil,
+		ReflectType: reflectType,
 	}
 }
 

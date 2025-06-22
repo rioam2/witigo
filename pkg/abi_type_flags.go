@@ -1,5 +1,7 @@
 package witigo
 
+import "reflect"
+
 type AbiTypeDefinitionFlags struct {
 	fieldTypes []AbiTypeDefinition
 }
@@ -14,9 +16,18 @@ func (a AbiTypeDefinitionFlags) Type() AbiType {
 
 func (a AbiTypeDefinitionFlags) Properties() AbiTypeProperties {
 	length := len(a.fieldTypes)
+	var reflectType reflect.Kind
+	if length <= 8 {
+		reflectType = reflect.Uint8
+	} else if length <= 16 {
+		reflectType = reflect.Uint16
+	} else {
+		reflectType = reflect.Uint32
+	}
 	return AbiTypeProperties{
-		SubTypes: append([]AbiTypeDefinition{}, a.fieldTypes...),
-		Length:   &length,
+		SubTypes:    append([]AbiTypeDefinition{}, a.fieldTypes...),
+		Length:      &length,
+		ReflectType: reflectType,
 	}
 }
 

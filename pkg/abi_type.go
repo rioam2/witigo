@@ -1,5 +1,7 @@
 package witigo
 
+import "reflect"
+
 type AbiType int
 
 const (
@@ -83,8 +85,9 @@ func (a AbiType) String() string {
 }
 
 type AbiTypeProperties struct {
-	SubTypes []AbiTypeDefinition
-	Length   *int
+	SubTypes    []AbiTypeDefinition
+	Length      *int
+	ReflectType reflect.Kind
 }
 
 type AbiTypeDefinition interface {

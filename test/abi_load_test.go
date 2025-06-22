@@ -1,0 +1,145 @@
+package test
+
+import (
+	"encoding/binary"
+	"fmt"
+	"math"
+	"testing"
+
+	witigo "github.com/rioam2/witigo/pkg"
+)
+
+type FakeMemory struct {
+	bytes []byte
+}
+
+func (m *FakeMemory) Read(ptr int32, size int32) ([]byte, error) {
+	if ptr < 0 || int(ptr)+int(size) > len(m.bytes) {
+		return nil, fmt.Errorf("memory out of bounds: ptr=%d, size=%d, memory size=%d", ptr, size, len(m.bytes))
+	}
+	return m.bytes[ptr : ptr+size], nil
+}
+
+func (m *FakeMemory) Write(ptr int32, data []byte) error {
+	if ptr < 0 || int(ptr)+len(data) > len(m.bytes) {
+		return fmt.Errorf("memory out of bounds: ptr=%d, data size=%d, memory size=%d", ptr, len(data), len(m.bytes))
+	}
+	copy(m.bytes[ptr:], data)
+	return nil
+}
+
+func (m *FakeMemory) Size() int32 {
+	return int32(len(m.bytes))
+}
+
+func createMemory(bytes []byte) witigo.RuntimeMemory {
+	return &FakeMemory{
+		bytes: bytes,
+	}
+}
+
+func TestAbiLoadInt(t *testing.T) {
+	tests := []struct {
+		name    string
+		typeDef witigo.AbiTypeDefinition
+		value   any
+		offset  int
+	}{
+		{
+			name:    "int8(4) offset 0",
+			typeDef: witigo.NewAbiTypeDefinitionS8(),
+			value:   int8(4),
+			offset:  1,
+		},
+		{
+			name:    "int8(5) offset 34",
+			typeDef: witigo.NewAbiTypeDefinitionS8(),
+			value:   int8(5),
+			offset:  34,
+		},
+		{
+			name:    "int16(27) offset 8",
+			typeDef: witigo.NewAbiTypeDefinitionS16(),
+			value:   int16(27),
+			offset:  8,
+		},
+		{
+			name:    "math.MaxInt32 offset 32",
+			typeDef: witigo.NewAbiTypeDefinitionS32(),
+			value:   int32(math.MaxInt32),
+			offset:  32,
+		},
+		{
+			name:    "math.MaxInt64 offset 64",
+			typeDef: witigo.NewAbiTypeDefinitionS64(),
+			value:   int64(math.MaxInt64),
+			offset:  64,
+		},
+		{
+			name:    "uint8(7) offset 5",
+			typeDef: witigo.NewAbiTypeDefinitionU8(),
+			value:   uint8(7),
+			offset:  5,
+		},
+		{
+			name:    "uint16(100) offset 10",
+			typeDef: witigo.NewAbiTypeDefinitionU16(),
+			value:   uint16(100),
+			offset:  10,
+		},
+		{
+			name:    "uint32(200) offset 20",
+			typeDef: witigo.NewAbiTypeDefinitionU32(),
+			value:   uint32(200),
+			offset:  20,
+		},
+		{
+			name:    "uint64(300) offset 40",
+			typeDef: witigo.NewAbiTypeDefinitionU64(),
+			value:   uint64(300),
+			offset:  40,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memoryBuffer := make([]byte, 1024)
+			abiOptions := witigo.AbiOptions{
+				StringEncoding: witigo.StringEncodingUTF8,
+				Memory:         createMemory(memoryBuffer),
+			}
+
+			binary.Encode(memoryBuffer[tt.offset:], binary.LittleEndian, tt.value)
+
+			var result any
+			var err error
+			switch v := tt.value.(type) {
+			case int8:
+				result, err = witigo.AbiLoadInt[int8](abiOptions, int32(tt.offset), tt.typeDef)
+			case int16:
+				result, err = witigo.AbiLoadInt[int16](abiOptions, int32(tt.offset), tt.typeDef)
+			case int32:
+				result, err = witigo.AbiLoadInt[int32](abiOptions, int32(tt.offset), tt.typeDef)
+			case int64:
+				result, err = witigo.AbiLoadInt[int64](abiOptions, int32(tt.offset), tt.typeDef)
+			case uint8:
+				result, err = witigo.AbiLoadInt[uint8](abiOptions, int32(tt.offset), tt.typeDef)
+			case uint16:
+				result, err = witigo.AbiLoadInt[uint16](abiOptions, int32(tt.offset), tt.typeDef)
+			case uint32:
+				result, err = witigo.AbiLoadInt[uint32](abiOptions, int32(tt.offset), tt.typeDef)
+			case uint64:
+				result, err = witigo.AbiLoadInt[uint64](abiOptions, int32(tt.offset), tt.typeDef)
+			default:
+				t.Fatalf("Unsupported type %T for test case %s", v, tt.name)
+			}
+
+			if err != nil {
+				t.Fatalf("AbiLoadInt failed: %v", err)
+			}
+			if result != tt.value {
+				t.Fatalf("Expected result to be %d, got %d", tt.value, result)
+			}
+		})
+	}
+}

@@ -3,6 +3,7 @@ package witigo
 import (
 	"fmt"
 	"math"
+	"reflect"
 )
 
 const (
@@ -27,8 +28,9 @@ func (a AbiTypeDefinitionVariant) Type() AbiType {
 func (a AbiTypeDefinitionVariant) Properties() AbiTypeProperties {
 	length := len(a.caseTypes)
 	return AbiTypeProperties{
-		SubTypes: append([]AbiTypeDefinition{}, a.caseTypes...),
-		Length:   &length,
+		SubTypes:    append([]AbiTypeDefinition{}, a.caseTypes...),
+		Length:      &length,
+		ReflectType: reflect.Map,
 	}
 }
 

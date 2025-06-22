@@ -1,6 +1,9 @@
 package witigo
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
 const (
 	ErrInvalidRecordLength = "invalid record length: must contain at least one field"
@@ -24,8 +27,9 @@ func (a AbiTypeDefinitionRecord) Type() AbiType {
 func (a AbiTypeDefinitionRecord) Properties() AbiTypeProperties {
 	length := len(a.fieldTypes)
 	return AbiTypeProperties{
-		SubTypes: append([]AbiTypeDefinition{}, a.fieldTypes...),
-		Length:   &length,
+		SubTypes:    append([]AbiTypeDefinition{}, a.fieldTypes...),
+		Length:      &length,
+		ReflectType: reflect.Map,
 	}
 }
 
