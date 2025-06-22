@@ -150,48 +150,70 @@ func TestAbiLoadFloat(t *testing.T) {
 		typeDef witigo.AbiTypeDefinition
 		value   any
 		offset  int
+		isNaN   bool
 	}{
 		{
 			name:    "float32(3.14) offset 0",
 			typeDef: witigo.NewAbiTypeDefinitionF32(),
 			value:   float32(3.14),
 			offset:  0,
+			isNaN:   false,
 		},
 		{
 			name:    "float32(-42.5) offset 12",
 			typeDef: witigo.NewAbiTypeDefinitionF32(),
 			value:   float32(-42.5),
 			offset:  12,
+			isNaN:   false,
 		},
 		{
 			name:    "float32(math.MaxFloat32) offset 24",
 			typeDef: witigo.NewAbiTypeDefinitionF32(),
 			value:   float32(math.MaxFloat32),
 			offset:  24,
+			isNaN:   false,
+		},
+		{
+			name:    "float32(NaN) offset 36",
+			typeDef: witigo.NewAbiTypeDefinitionF32(),
+			value:   float32(math.NaN()),
+			offset:  36,
+			isNaN:   true,
 		},
 		{
 			name:    "float64(2.71828) offset 4",
 			typeDef: witigo.NewAbiTypeDefinitionF64(),
 			value:   float64(2.71828),
 			offset:  4,
+			isNaN:   false,
 		},
 		{
 			name:    "float64(-123.456) offset 16",
 			typeDef: witigo.NewAbiTypeDefinitionF64(),
 			value:   float64(-123.456),
 			offset:  16,
+			isNaN:   false,
 		},
 		{
 			name:    "float64(math.MaxFloat64) offset 32",
 			typeDef: witigo.NewAbiTypeDefinitionF64(),
 			value:   float64(math.MaxFloat64),
 			offset:  32,
+			isNaN:   false,
 		},
 		{
 			name:    "float64(math.SmallestNonzeroFloat64) offset 48",
 			typeDef: witigo.NewAbiTypeDefinitionF64(),
 			value:   float64(math.SmallestNonzeroFloat64),
 			offset:  48,
+			isNaN:   false,
+		},
+		{
+			name:    "float64(NaN) offset 56",
+			typeDef: witigo.NewAbiTypeDefinitionF64(),
+			value:   math.NaN(),
+			offset:  56,
+			isNaN:   true,
 		},
 	}
 
@@ -219,12 +241,25 @@ func TestAbiLoadFloat(t *testing.T) {
 			if err != nil {
 				t.Fatalf("AbiLoadFloat failed: %v", err)
 			}
-			if result != tt.value {
+
+			if tt.isNaN {
+				switch v := result.(type) {
+				case float32:
+					if !math.IsNaN(float64(v)) {
+						t.Fatalf("Expected result to be NaN, got %v", v)
+					}
+				case float64:
+					if !math.IsNaN(v) {
+						t.Fatalf("Expected result to be NaN, got %v", v)
+					}
+				}
+			} else if result != tt.value {
 				t.Fatalf("Expected result to be %v, got %v", tt.value, result)
 			}
 		})
 	}
 }
+
 func TestAbiLoadBool(t *testing.T) {
 	tests := []struct {
 		name    string
