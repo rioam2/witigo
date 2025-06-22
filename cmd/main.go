@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-
-	witigo "github.com/rioam2/witigo/pkg"
 )
 
 func main() {
@@ -16,7 +14,7 @@ func main() {
 	command := os.Args[1]
 	switch command {
 	case "hello":
-		fmt.Println(witigo.MyFunction())
+		fmt.Println("Hello, World!")
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		os.Exit(1)

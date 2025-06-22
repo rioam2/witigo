@@ -143,3 +143,138 @@ func TestAbiLoadInt(t *testing.T) {
 		})
 	}
 }
+
+func TestAbiLoadFloat(t *testing.T) {
+	tests := []struct {
+		name    string
+		typeDef witigo.AbiTypeDefinition
+		value   any
+		offset  int
+	}{
+		{
+			name:    "float32(3.14) offset 0",
+			typeDef: witigo.NewAbiTypeDefinitionF32(),
+			value:   float32(3.14),
+			offset:  0,
+		},
+		{
+			name:    "float32(-42.5) offset 12",
+			typeDef: witigo.NewAbiTypeDefinitionF32(),
+			value:   float32(-42.5),
+			offset:  12,
+		},
+		{
+			name:    "float32(math.MaxFloat32) offset 24",
+			typeDef: witigo.NewAbiTypeDefinitionF32(),
+			value:   float32(math.MaxFloat32),
+			offset:  24,
+		},
+		{
+			name:    "float64(2.71828) offset 4",
+			typeDef: witigo.NewAbiTypeDefinitionF64(),
+			value:   float64(2.71828),
+			offset:  4,
+		},
+		{
+			name:    "float64(-123.456) offset 16",
+			typeDef: witigo.NewAbiTypeDefinitionF64(),
+			value:   float64(-123.456),
+			offset:  16,
+		},
+		{
+			name:    "float64(math.MaxFloat64) offset 32",
+			typeDef: witigo.NewAbiTypeDefinitionF64(),
+			value:   float64(math.MaxFloat64),
+			offset:  32,
+		},
+		{
+			name:    "float64(math.SmallestNonzeroFloat64) offset 48",
+			typeDef: witigo.NewAbiTypeDefinitionF64(),
+			value:   float64(math.SmallestNonzeroFloat64),
+			offset:  48,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memoryBuffer := make([]byte, 1024)
+			abiOptions := witigo.AbiOptions{
+				StringEncoding: witigo.StringEncodingUTF8,
+				Memory:         createMemory(memoryBuffer),
+			}
+
+			binary.Encode(memoryBuffer[tt.offset:], binary.LittleEndian, tt.value)
+
+			var result any
+			var err error
+			switch v := tt.value.(type) {
+			case float32:
+				result, err = witigo.AbiLoadFloat[float32](abiOptions, int32(tt.offset), tt.typeDef)
+			case float64:
+				result, err = witigo.AbiLoadFloat[float64](abiOptions, int32(tt.offset), tt.typeDef)
+			default:
+				t.Fatalf("Unsupported type %T for test case %s", v, tt.name)
+			}
+
+			if err != nil {
+				t.Fatalf("AbiLoadFloat failed: %v", err)
+			}
+			if result != tt.value {
+				t.Fatalf("Expected result to be %v, got %v", tt.value, result)
+			}
+		})
+	}
+}
+func TestAbiLoadBool(t *testing.T) {
+	tests := []struct {
+		name    string
+		typeDef witigo.AbiTypeDefinition
+		value   bool
+		offset  int
+	}{
+		{
+			name:    "bool(true) offset 0",
+			typeDef: witigo.NewAbiTypeDefinitionBool(),
+			value:   true,
+			offset:  0,
+		},
+		{
+			name:    "bool(false) offset 10",
+			typeDef: witigo.NewAbiTypeDefinitionBool(),
+			value:   false,
+			offset:  10,
+		},
+		{
+			name:    "bool(true) offset 42",
+			typeDef: witigo.NewAbiTypeDefinitionBool(),
+			value:   true,
+			offset:  42,
+		},
+		{
+			name:    "bool(false) offset 100",
+			typeDef: witigo.NewAbiTypeDefinitionBool(),
+			value:   false,
+			offset:  100,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memoryBuffer := make([]byte, 1024)
+			abiOptions := witigo.AbiOptions{
+				StringEncoding: witigo.StringEncodingUTF8,
+				Memory:         createMemory(memoryBuffer),
+			}
+
+			binary.Encode(memoryBuffer[tt.offset:], binary.LittleEndian, tt.value)
+
+			result, err := witigo.AbiLoadBool(abiOptions, int32(tt.offset), tt.typeDef)
+			if err != nil {
+				t.Fatalf("AbiLoadBool failed: %v", err)
+			}
+			if result != tt.value {
+				t.Fatalf("Expected result to be %v, got %v", tt.value, result)
+			}
+		})
+	}
+}

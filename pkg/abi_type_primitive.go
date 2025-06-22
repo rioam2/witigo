@@ -46,6 +46,10 @@ func NewAbiTypeDefinitionF32() AbiTypeDefinition {
 	return AbiTypeDefinitionPrimitive{AbiTypeF32}
 }
 
+func NewAbiTypeDefinitionF64() AbiTypeDefinition {
+	return AbiTypeDefinitionPrimitive{AbiTypeF64}
+}
+
 func NewAbiTypeDefinitionChar() AbiTypeDefinition {
 	return AbiTypeDefinitionPrimitive{AbiTypeChar}
 }
