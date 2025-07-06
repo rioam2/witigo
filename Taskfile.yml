@@ -1,8 +1,5 @@
 version: '3'
 
-vars:
-  GREETING: Hello, World!
-
 tasks:
   cli:
     cmds:
@@ -13,3 +10,8 @@ tasks:
   test:
     cmds:
       - go test ./test
+  basic_example:
+    dir: examples/basic
+    cmds:
+      - cd lib && cmake --workflow --preset wasi
+      - go run ./main.go ./lib/build/wasi/src/basic_example_component.wasm

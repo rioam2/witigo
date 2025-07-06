@@ -79,6 +79,14 @@ func (a AbiType) String() string {
 		return "stream"
 	case AbiTypeFuture:
 		return "future"
+	case AbiTypeOption:
+		return "option"
+	case AbiTypeTuple:
+		return "tuple"
+	case AbiTypeEnum:
+		return "enum"
+	case AbiTypeResult:
+		return "result"
 	default:
 		return "UnknownAbiType(" + string(rune(a)) + ")"
 	}
