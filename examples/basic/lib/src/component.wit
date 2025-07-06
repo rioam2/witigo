@@ -1,0 +1,14 @@
+package examples:basic;
+
+world basic-example {
+    record customer {
+        id: u64,
+        name: string,
+        picture: option<list<u8>>,
+        age: u32,
+    }
+
+    export string-func: func (input: string) -> string;
+    export record-func: func (input: customer) -> customer;
+    export tuple-func: func (input: tuple<string, u32>) -> tuple<string, u32>;
+}
