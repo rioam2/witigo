@@ -1,9 +1,14 @@
 package wit
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
+	"io/fs"
+	"os"
+
+	"github.com/rioam2/witigo/pkg/wasmtools"
 )
 
 type WitDefinition interface {
@@ -40,10 +45,21 @@ func (w *WitDefinitionImpl) Types() []WitType {
 }
 
 func NewFromFile(filePath string) (WitDefinition, error) {
-	cmd := exec.Command("wasm-tools", "component", "wit", "-j", "--all-features", filePath)
-	witJsonStr, err := cmd.CombinedOutput()
+	ctx := context.Background()
+	runtime, err := wasmtools.New(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error running wasm-tools: %w", err)
+		return nil, fmt.Errorf("error creating wasmtools runtime: %w", err)
 	}
-	return &WitDefinitionImpl{Raw: json.RawMessage(witJsonStr)}, nil
+	defer runtime.Close(ctx)
+
+	// Run the wasm-tools command to get the WIT definition in JSON format.
+	fsMap := map[string]fs.FS{".": os.DirFS(".")}
+	stdoutBuffer := &bytes.Buffer{}
+	stderrBuffer := &bytes.Buffer{}
+	err = runtime.Run(ctx, os.Stdin, stdoutBuffer, stderrBuffer, fsMap, "component", "wit", "-j", "--all-features", filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error running wasm-tools: %w\n%s", err, stderrBuffer.String())
+	}
+
+	return &WitDefinitionImpl{Raw: json.RawMessage(stdoutBuffer.String())}, nil
 }
