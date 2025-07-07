@@ -13,6 +13,8 @@ type WitWorldDefinitionImpl struct {
 	Root WitDefinition
 }
 
+var _ WitWorldDefinition = &WitWorldDefinitionImpl{}
+
 func (w *WitWorldDefinitionImpl) Name() string {
 	var data struct {
 		Name string `json:"name"`

@@ -16,6 +16,8 @@ type WitFunctionImpl struct {
 	Root WitDefinition
 }
 
+var _ WitFunction = &WitFunctionImpl{}
+
 func (w *WitFunctionImpl) Name() string {
 	var data struct {
 		Name string `json:"name"`

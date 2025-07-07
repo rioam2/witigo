@@ -20,6 +20,8 @@ type WitDefinitionImpl struct {
 	Raw json.RawMessage
 }
 
+var _ WitDefinition = &WitDefinitionImpl{}
+
 func (w *WitDefinitionImpl) Worlds() []WitWorldDefinition {
 	var data struct {
 		Worlds []json.RawMessage `json:"worlds"`

@@ -16,6 +16,8 @@ type WitTypeReferenceImpl struct {
 	Root WitDefinition
 }
 
+var _ WitTypeReference = &WitTypeReferenceImpl{}
+
 func (w *WitTypeReferenceImpl) Name() string {
 	var data struct {
 		Name *string `json:"name"`
