@@ -11,8 +11,8 @@ type WitType interface {
 	Name() string
 	Kind() witigo.AbiType
 	String() string
-	RecordFields() []WitTypeReference
-	ListType() WitTypeReference
+	Fields() []WitTypeReference
+	SubType() WitTypeReference
 }
 
 type WitTypeImpl struct {
@@ -105,7 +105,7 @@ func (w *WitTypeImpl) String() string {
 	base := w.Kind().String()
 	switch w.Kind() {
 	case witigo.AbiTypeRecord:
-		fields := w.RecordFields()
+		fields := w.Fields()
 		if len(fields) > 0 {
 			base += "{ "
 			for i, field := range fields {
@@ -116,17 +116,16 @@ func (w *WitTypeImpl) String() string {
 			}
 			base += " }"
 		}
-	case witigo.AbiTypeList:
-		listType := w.ListType()
+	case witigo.AbiTypeList, witigo.AbiTypeOption:
+		listType := w.SubType()
 		if listType != nil {
 			base += "<" + listType.String() + ">"
 		}
 	}
 	return base
-
 }
 
-func (w *WitTypeImpl) RecordFields() []WitTypeReference {
+func (w *WitTypeImpl) Fields() []WitTypeReference {
 	var data struct {
 		Kind struct {
 			Record struct {
@@ -142,21 +141,24 @@ func (w *WitTypeImpl) RecordFields() []WitTypeReference {
 	return fields
 }
 
-func (w *WitTypeImpl) ListType() WitTypeReference {
+func (w *WitTypeImpl) SubType() WitTypeReference {
 	var data struct {
 		Kind struct {
-			List *any `json:"list"`
+			List   *any `json:"list"`
+			Option *any `json:"option"`
 		} `json:"kind"`
 	}
 	json.Unmarshal(w.Raw, &data)
-	if data.Kind.List == nil {
-		return nil
-	}
 	var typeRef struct {
 		Name *string `json:"name"`
-		Type any     `json:"type"`
+		Type *any    `json:"type"`
 	}
-	typeRef.Type = *data.Kind.List
+	if data.Kind.List != nil {
+		typeRef.Type = data.Kind.List
+	}
+	if data.Kind.Option != nil {
+		typeRef.Type = data.Kind.Option
+	}
 	typeRef.Name = nil
 	rawTypeRef, err := json.Marshal(typeRef)
 	if err != nil {
