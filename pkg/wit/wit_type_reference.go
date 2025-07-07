@@ -2,7 +2,6 @@ package wit
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 type WitTypeReference interface {
@@ -31,10 +30,21 @@ func (w *WitTypeReferenceImpl) Name() string {
 
 func (w *WitTypeReferenceImpl) Type() WitType {
 	var data struct {
-		Type any `json:"type"`
+		Type *any `json:"type"`
 	}
 	json.Unmarshal(w.Raw, &data)
-	switch t := data.Type.(type) {
+	if data.Type == nil {
+		// Default to u32 if no type is specified
+		remappedType, err := json.Marshal(map[string]any{
+			"type": "u32",
+			"name": w.Name(),
+		})
+		if err != nil {
+			return nil
+		}
+		return &WitTypeImpl{Raw: remappedType, Root: w.Root}
+	}
+	switch t := (*data.Type).(type) {
 	case string:
 		return &WitTypeImpl{w.Raw, w.Root}
 	case float64:
@@ -45,5 +55,5 @@ func (w *WitTypeReferenceImpl) Type() WitType {
 }
 
 func (w *WitTypeReferenceImpl) String() string {
-	return fmt.Sprintf("%s", w.Type().String())
+	return w.Type().String()
 }
