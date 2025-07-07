@@ -37,6 +37,7 @@ func (w *WitTypeImpl) Kind() witigo.AbiType {
 			Option *any             `json:"option"`
 			Record *json.RawMessage `json:"record"`
 			Tuple  *json.RawMessage `json:"tuple"`
+			Result *json.RawMessage `json:"result"`
 		} `json:"kind"`
 		Type *string `json:"type"`
 	}
@@ -82,6 +83,9 @@ func (w *WitTypeImpl) Kind() witigo.AbiType {
 	}
 	if data.Kind.Tuple != nil {
 		return witigo.AbiTypeTuple
+	}
+	if data.Kind.Result != nil {
+		return witigo.AbiTypeResult
 	}
 	panic(fmt.Sprintf("Unknown WIT type kind: %v", data.Kind))
 }

@@ -61,5 +61,6 @@ func NewFromFile(filePath string) (WitDefinition, error) {
 		return nil, fmt.Errorf("error running wasm-tools: %w\n%s", err, stderrBuffer.String())
 	}
 
-	return &WitDefinitionImpl{Raw: json.RawMessage(stdoutBuffer.String())}, nil
+	witJson := stdoutBuffer.String()
+	return &WitDefinitionImpl{Raw: json.RawMessage(witJson)}, nil
 }
