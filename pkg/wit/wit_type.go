@@ -33,11 +33,13 @@ func (w *WitTypeImpl) Name() string {
 func (w *WitTypeImpl) Kind() witigo.AbiType {
 	var data struct {
 		Kind *struct {
-			List   *any             `json:"list"`
-			Option *any             `json:"option"`
-			Record *json.RawMessage `json:"record"`
-			Tuple  *json.RawMessage `json:"tuple"`
-			Result *json.RawMessage `json:"result"`
+			List    *json.RawMessage `json:"list"`
+			Option  *json.RawMessage `json:"option"`
+			Record  *json.RawMessage `json:"record"`
+			Tuple   *json.RawMessage `json:"tuple"`
+			Result  *json.RawMessage `json:"result"`
+			Variant *json.RawMessage `json:"variant"`
+			Enum    *json.RawMessage `json:"enum"`
 		} `json:"kind"`
 		Type *string `json:"type"`
 	}
@@ -86,6 +88,12 @@ func (w *WitTypeImpl) Kind() witigo.AbiType {
 	}
 	if data.Kind.Result != nil {
 		return witigo.AbiTypeResult
+	}
+	if data.Kind.Variant != nil {
+		return witigo.AbiTypeVariant
+	}
+	if data.Kind.Enum != nil {
+		return witigo.AbiTypeEnum
 	}
 	panic(fmt.Sprintf("Unknown WIT type kind: %v", data.Kind))
 }

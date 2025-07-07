@@ -48,3 +48,34 @@ bool basic_example_result_func(basic_example_result_u64_string_t* input,
     return true;
   }
 }
+
+void basic_example_variant_func(basic_example_allowed_destinations_t* input,
+                                basic_example_allowed_destinations_t* ret) {
+  if (input->tag == BASIC_EXAMPLE_ALLOWED_DESTINATIONS_NONE) {
+    ret->tag = BASIC_EXAMPLE_ALLOWED_DESTINATIONS_NONE;
+  } else if (input->tag == BASIC_EXAMPLE_ALLOWED_DESTINATIONS_ANY) {
+    ret->tag = BASIC_EXAMPLE_ALLOWED_DESTINATIONS_ANY;
+  } else if (input->tag == BASIC_EXAMPLE_ALLOWED_DESTINATIONS_RESTRICTED) {
+    ret->tag = BASIC_EXAMPLE_ALLOWED_DESTINATIONS_RESTRICTED;
+    ret->val.restricted.len = input->val.restricted.len;
+    ret->val.restricted.ptr = (basic_example_string_t*)realloc(
+        ret->val.restricted.ptr,
+        input->val.restricted.len * sizeof(basic_example_string_t));
+    memcpy(ret->val.restricted.ptr, input->val.restricted.ptr,
+           input->val.restricted.len * sizeof(basic_example_string_t));
+  }
+}
+
+basic_example_color_t basic_example_enum_func(basic_example_color_t input) {
+  switch (input) {
+    case BASIC_EXAMPLE_COLOR_HOT_PINK:
+      return BASIC_EXAMPLE_COLOR_HOT_PINK;
+    case BASIC_EXAMPLE_COLOR_LIME_GREEN:
+      return BASIC_EXAMPLE_COLOR_LIME_GREEN;
+    case BASIC_EXAMPLE_COLOR_NAVY_BLUE:
+      return BASIC_EXAMPLE_COLOR_NAVY_BLUE;
+    default:
+      // Handle unexpected values gracefully
+      return BASIC_EXAMPLE_COLOR_HOT_PINK;  // Default case
+  }
+}
