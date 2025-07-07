@@ -34,15 +34,7 @@ func (w *WitTypeReferenceImpl) Type() WitType {
 	}
 	json.Unmarshal(w.Raw, &data)
 	if data.Type == nil {
-		// Default to u32 if no type is specified
-		remappedType, err := json.Marshal(map[string]any{
-			"type": "u32",
-			"name": w.Name(),
-		})
-		if err != nil {
-			return nil
-		}
-		return &WitTypeImpl{Raw: remappedType, Root: w.Root}
+		return nil
 	}
 	switch t := (*data.Type).(type) {
 	case string:
@@ -55,5 +47,9 @@ func (w *WitTypeReferenceImpl) Type() WitType {
 }
 
 func (w *WitTypeReferenceImpl) String() string {
-	return w.Type().String()
+	t := w.Type()
+	if t == nil {
+		return "(none)"
+	}
+	return t.String()
 }

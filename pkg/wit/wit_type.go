@@ -171,7 +171,9 @@ func (w *WitTypeImpl) SubTypes() []WitTypeReference {
 				Cases []json.RawMessage `json:"cases"`
 			} `json:"variant"`
 			Enum struct {
-				Cases []json.RawMessage `json:"cases"`
+				Cases []struct {
+					Name string `json:"name"`
+				} `json:"cases"`
 			} `json:"enum"`
 			Tuple struct {
 				Types []any `json:"types"`
@@ -190,18 +192,26 @@ func (w *WitTypeImpl) SubTypes() []WitTypeReference {
 		}
 	} else if data.Kind.Enum.Cases != nil {
 		for _, c := range data.Kind.Enum.Cases {
-			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: c, Root: w.Root})
+			remappedType, err := json.Marshal(map[string]any{
+				// TODO: I believe this is dependent on number of cases
+				"type": "u32",
+				"name": c.Name,
+			})
+			if err != nil {
+				panic(fmt.Sprintf("Failed to marshal enum type reference: %v", err))
+			}
+			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: remappedType, Root: w.Root})
 		}
 	} else if data.Kind.Tuple.Types != nil {
 		for _, t := range data.Kind.Tuple.Types {
-			rawTypeRef, err := json.Marshal(map[string]any{
+			remappedType, err := json.Marshal(map[string]any{
 				"type": t,
 				"name": nil,
 			})
 			if err != nil {
 				panic(fmt.Sprintf("Failed to marshal tuple type reference: %v", err))
 			}
-			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: rawTypeRef, Root: w.Root})
+			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: remappedType, Root: w.Root})
 		}
 	}
 	return subTypes
