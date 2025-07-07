@@ -12,6 +12,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
+	"path/filepath"
+	"runtime/debug"
+	"strings"
 	"sync"
 
 	"github.com/tetratelabs/wazero"
@@ -32,6 +36,58 @@ var decompress = sync.OnceValues(func() ([]byte, error) {
 	return buf.Bytes(), err
 })
 
+var buildInfo = sync.OnceValue(func() *debug.BuildInfo {
+	build, _ := debug.ReadBuildInfo()
+	return build
+})
+
+var versionString = sync.OnceValue(func() string {
+	const nonePath string = "(none)"
+	build := buildInfo()
+	if build == nil {
+		return nonePath
+	}
+	version := build.Main.Version
+	var revision string
+	for _, s := range build.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			revision = s.Value
+		}
+	}
+	if version == "" {
+		version = nonePath
+	}
+	versionString := version
+	if revision != "" {
+		versionString += " (" + revision + ")"
+	}
+	return versionString
+})
+
+var compilationCache = sync.OnceValue(func() wazero.CompilationCache {
+	// First try on-disk cache, so subsequent invocations can share cache
+	tmp := os.TempDir()
+	if tmp != "" {
+		var path string
+		build := buildInfo()
+		if build == nil {
+			path = "(none)"
+		} else {
+			path = build.Main.Path
+		}
+		rep := strings.NewReplacer(" ", "", "(", "", ")", "")
+		dir := filepath.Join(tmp, rep.Replace(path+"@"+versionString()))
+		c, err := wazero.NewCompilationCacheWithDir(dir)
+		if err == nil {
+			return c
+		}
+	}
+
+	// Fall back to in-memory cache
+	return wazero.NewCompilationCache()
+})
+
 // Instance is a compiled wazero instance.
 type Instance struct {
 	runtime wazero.Runtime
@@ -41,7 +97,8 @@ type Instance struct {
 // New creates a new wazero instance.
 func New(ctx context.Context) (*Instance, error) {
 	c := wazero.NewRuntimeConfig().
-		WithCloseOnContextDone(true)
+		WithCloseOnContextDone(true).
+		WithCompilationCache(compilationCache())
 
 	r := wazero.NewRuntimeWithConfig(ctx, c)
 	if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
