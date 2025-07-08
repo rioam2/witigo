@@ -121,7 +121,7 @@ func (w *WitTypeImpl) String() string {
 			}
 			base += " }"
 		}
-	case witigo.AbiTypeTuple:
+	case witigo.AbiTypeTuple, witigo.AbiTypeResult:
 		tupleTypes := w.SubTypes()
 		if len(tupleTypes) > 0 {
 			base += "<"
@@ -164,33 +164,37 @@ func (w *WitTypeImpl) SubType() WitTypeReference {
 func (w *WitTypeImpl) SubTypes() []WitTypeReference {
 	var data struct {
 		Kind struct {
-			Record struct {
+			Record *struct {
 				Fields []json.RawMessage `json:"fields"`
 			} `json:"record"`
-			Variant struct {
+			Variant *struct {
 				Cases []json.RawMessage `json:"cases"`
 			} `json:"variant"`
-			Enum struct {
+			Enum *struct {
 				Cases []struct {
 					Name string `json:"name"`
 				} `json:"cases"`
 			} `json:"enum"`
-			Tuple struct {
+			Tuple *struct {
 				Types []any `json:"types"`
 			} `json:"tuple"`
+			Result *struct {
+				Ok  *any `json:"ok"`
+				Err *any `json:"err"`
+			} `json:"result"`
 		} `json:"kind"`
 	}
 	json.Unmarshal(w.Raw, &data)
 	var subTypes []WitTypeReference
-	if data.Kind.Record.Fields != nil {
+	if data.Kind.Record != nil {
 		for _, field := range data.Kind.Record.Fields {
 			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: field, Root: w.Root})
 		}
-	} else if data.Kind.Variant.Cases != nil {
+	} else if data.Kind.Variant != nil {
 		for _, c := range data.Kind.Variant.Cases {
 			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: c, Root: w.Root})
 		}
-	} else if data.Kind.Enum.Cases != nil {
+	} else if data.Kind.Enum != nil {
 		for _, c := range data.Kind.Enum.Cases {
 			remappedType, err := json.Marshal(map[string]any{
 				// TODO: I believe this is dependent on number of cases
@@ -202,7 +206,7 @@ func (w *WitTypeImpl) SubTypes() []WitTypeReference {
 			}
 			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: remappedType, Root: w.Root})
 		}
-	} else if data.Kind.Tuple.Types != nil {
+	} else if data.Kind.Tuple != nil {
 		for _, t := range data.Kind.Tuple.Types {
 			remappedType, err := json.Marshal(map[string]any{
 				"type": t,
@@ -213,6 +217,23 @@ func (w *WitTypeImpl) SubTypes() []WitTypeReference {
 			}
 			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: remappedType, Root: w.Root})
 		}
+	} else if data.Kind.Result != nil {
+		okType, err := json.Marshal(map[string]any{
+			"type": data.Kind.Result.Ok,
+			"name": "ok",
+		})
+		if err != nil {
+			panic(fmt.Sprintf("Failed to marshal result ok type reference: %v", err))
+		}
+		errType, err := json.Marshal(map[string]any{
+			"type": data.Kind.Result.Err,
+			"name": "error",
+		})
+		if err != nil {
+			panic(fmt.Sprintf("Failed to marshal result err type reference: %v", err))
+		}
+		subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: okType, Root: w.Root})
+		subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: errType, Root: w.Root})
 	}
 	return subTypes
 }
