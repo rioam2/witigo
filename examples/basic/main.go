@@ -21,12 +21,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	for _, world := range wit.Worlds() {
-		fmt.Println(world.String())
-	}
+	fmt.Println(wit.String())
+	fmt.Println("---")
 	fmt.Println("Types:")
 	for idx, t := range wit.Types() {
 		fmt.Printf("  %d: %s: %s\n", idx, t.Name(), t.String())
 	}
-	fmt.Println("WIT extraction completed successfully.")
 }

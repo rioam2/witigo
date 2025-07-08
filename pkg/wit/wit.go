@@ -14,6 +14,7 @@ import (
 type WitDefinition interface {
 	Worlds() []WitWorldDefinition
 	Types() []WitType
+	String() string
 }
 
 type WitDefinitionImpl struct {
@@ -44,6 +45,14 @@ func (w *WitDefinitionImpl) Types() []WitType {
 		types = append(types, &WitTypeImpl{t, w})
 	}
 	return types
+}
+
+func (w *WitDefinitionImpl) String() string {
+	var base string
+	for _, world := range w.Worlds() {
+		base += world.String() + "\n"
+	}
+	return base
 }
 
 func NewFromFile(filePath string) (WitDefinition, error) {
