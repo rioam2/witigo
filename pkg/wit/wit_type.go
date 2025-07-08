@@ -101,42 +101,6 @@ func (w *WitTypeImpl) Kind() witigo.AbiType {
 	panic(fmt.Sprintf("Unknown WIT type kind: %v", data.Kind))
 }
 
-func (w *WitTypeImpl) String() string {
-	base := w.Kind().String()
-	switch w.Kind() {
-	case witigo.AbiTypeList, witigo.AbiTypeOption:
-		listType := w.SubType()
-		if listType != nil {
-			base += "<" + listType.String() + ">"
-		}
-	case witigo.AbiTypeRecord, witigo.AbiTypeVariant, witigo.AbiTypeEnum:
-		cases := w.SubTypes()
-		if len(cases) > 0 {
-			base += "{ "
-			for i, c := range cases {
-				if i > 0 {
-					base += ", "
-				}
-				base += c.Name() + ": " + c.String()
-			}
-			base += " }"
-		}
-	case witigo.AbiTypeTuple, witigo.AbiTypeResult:
-		tupleTypes := w.SubTypes()
-		if len(tupleTypes) > 0 {
-			base += "<"
-			for i, t := range tupleTypes {
-				if i > 0 {
-					base += ", "
-				}
-				base += t.String()
-			}
-			base += ">"
-		}
-	}
-	return base
-}
-
 func (w *WitTypeImpl) SubType() WitTypeReference {
 	var data struct {
 		Kind struct {
@@ -164,76 +128,170 @@ func (w *WitTypeImpl) SubType() WitTypeReference {
 func (w *WitTypeImpl) SubTypes() []WitTypeReference {
 	var data struct {
 		Kind struct {
-			Record *struct {
-				Fields []json.RawMessage `json:"fields"`
-			} `json:"record"`
-			Variant *struct {
-				Cases []json.RawMessage `json:"cases"`
-			} `json:"variant"`
-			Enum *struct {
-				Cases []struct {
-					Name string `json:"name"`
-				} `json:"cases"`
-			} `json:"enum"`
-			Tuple *struct {
-				Types []any `json:"types"`
-			} `json:"tuple"`
-			Result *struct {
-				Ok  *any `json:"ok"`
-				Err *any `json:"err"`
-			} `json:"result"`
+			Record  *json.RawMessage `json:"record"`
+			Variant *json.RawMessage `json:"variant"`
+			Enum    *json.RawMessage `json:"enum"`
+			Tuple   *json.RawMessage `json:"tuple"`
+			Result  *json.RawMessage `json:"result"`
 		} `json:"kind"`
 	}
 	json.Unmarshal(w.Raw, &data)
-	var subTypes []WitTypeReference
 	if data.Kind.Record != nil {
-		for _, field := range data.Kind.Record.Fields {
-			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: field, Root: w.Root})
-		}
-	} else if data.Kind.Variant != nil {
-		for _, c := range data.Kind.Variant.Cases {
-			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: c, Root: w.Root})
-		}
-	} else if data.Kind.Enum != nil {
-		for _, c := range data.Kind.Enum.Cases {
-			remappedType, err := json.Marshal(map[string]any{
-				// TODO: I believe this is dependent on number of cases
-				"type": "u32",
-				"name": c.Name,
-			})
-			if err != nil {
-				panic(fmt.Sprintf("Failed to marshal enum type reference: %v", err))
-			}
-			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: remappedType, Root: w.Root})
-		}
-	} else if data.Kind.Tuple != nil {
-		for _, t := range data.Kind.Tuple.Types {
-			remappedType, err := json.Marshal(map[string]any{
-				"type": t,
-				"name": nil,
-			})
-			if err != nil {
-				panic(fmt.Sprintf("Failed to marshal tuple type reference: %v", err))
-			}
-			subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: remappedType, Root: w.Root})
-		}
-	} else if data.Kind.Result != nil {
-		okType, err := json.Marshal(map[string]any{
-			"type": data.Kind.Result.Ok,
-			"name": "ok",
-		})
-		if err != nil {
-			panic(fmt.Sprintf("Failed to marshal result ok type reference: %v", err))
-		}
-		errType, err := json.Marshal(map[string]any{
-			"type": data.Kind.Result.Err,
-			"name": "error",
-		})
-		if err != nil {
-			panic(fmt.Sprintf("Failed to marshal result err type reference: %v", err))
-		}
-		subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: okType, Root: w.Root})
-		subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: errType, Root: w.Root})
+		return w.handleRecordType(data.Kind.Record)
+	}
+	if data.Kind.Variant != nil {
+		return w.handleVariantType(data.Kind.Variant)
+	}
+	if data.Kind.Enum != nil {
+		return w.handleEnumType(data.Kind.Enum)
+	}
+	if data.Kind.Tuple != nil {
+		return w.handleTupleType(data.Kind.Tuple)
+	}
+	if data.Kind.Result != nil {
+		return w.handleResultType(data.Kind.Result)
+	}
+	return nil
+}
+
+func (w *WitTypeImpl) handleRecordType(rawRecord *json.RawMessage) []WitTypeReference {
+	var subTypes []WitTypeReference
+	var record struct {
+		Fields []json.RawMessage `json:"fields"`
+	}
+	json.Unmarshal(*rawRecord, &record)
+	for _, field := range record.Fields {
+		subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: field, Root: w.Root})
 	}
 	return subTypes
+}
+
+func (w *WitTypeImpl) handleVariantType(rawVariant *json.RawMessage) []WitTypeReference {
+	var subTypes []WitTypeReference
+	var variant struct {
+		Cases []json.RawMessage `json:"cases"`
+	}
+	json.Unmarshal(*rawVariant, &variant)
+	for _, c := range variant.Cases {
+		subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: c, Root: w.Root})
+	}
+	return subTypes
+}
+
+func (w *WitTypeImpl) handleEnumType(rawEnum *json.RawMessage) []WitTypeReference {
+	var subTypes []WitTypeReference
+	var enum struct {
+		Cases []struct {
+			Name string `json:"name"`
+		} `json:"cases"`
+	}
+	json.Unmarshal(*rawEnum, &enum)
+	for _, c := range enum.Cases {
+		remappedType, err := json.Marshal(map[string]any{
+			// TODO: I believe this is dependent on number of cases
+			"type": "u32",
+			"name": c.Name,
+		})
+		if err != nil {
+			panic(fmt.Sprintf("Failed to marshal enum type reference: %v", err))
+		}
+		subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: remappedType, Root: w.Root})
+	}
+	return subTypes
+}
+
+func (w *WitTypeImpl) handleTupleType(rawTuple *json.RawMessage) []WitTypeReference {
+	var subTypes []WitTypeReference
+	var tuple struct {
+		Types []any `json:"types"`
+	}
+	json.Unmarshal(*rawTuple, &tuple)
+	for _, t := range tuple.Types {
+		remappedType, err := json.Marshal(map[string]any{
+			"type": t,
+			"name": nil,
+		})
+		if err != nil {
+			panic(fmt.Sprintf("Failed to marshal tuple type reference: %v", err))
+		}
+		subTypes = append(subTypes, &WitTypeReferenceImpl{Raw: remappedType, Root: w.Root})
+	}
+	return subTypes
+}
+
+func (w *WitTypeImpl) handleResultType(rawResult *json.RawMessage) []WitTypeReference {
+	var result struct {
+		Ok  *any `json:"ok"`
+		Err *any `json:"err"`
+	}
+	json.Unmarshal(*rawResult, &result)
+	okType, err := json.Marshal(map[string]any{
+		"type": result.Ok,
+		"name": "ok",
+	})
+	if err != nil {
+		panic(fmt.Sprintf("Failed to marshal result ok type reference: %v", err))
+	}
+	errType, err := json.Marshal(map[string]any{
+		"type": result.Err,
+		"name": "error",
+	})
+	if err != nil {
+		panic(fmt.Sprintf("Failed to marshal result err type reference: %v", err))
+	}
+	return []WitTypeReference{
+		&WitTypeReferenceImpl{Raw: okType, Root: w.Root},
+		&WitTypeReferenceImpl{Raw: errType, Root: w.Root},
+	}
+}
+
+func (w *WitTypeImpl) String() string {
+	base := w.Kind().String()
+	switch w.Kind() {
+	case witigo.AbiTypeList, witigo.AbiTypeOption:
+		base = w.formatSingleTypeContainer(base)
+	case witigo.AbiTypeRecord, witigo.AbiTypeVariant, witigo.AbiTypeEnum:
+		base = w.formatNamedTypes(base)
+	case witigo.AbiTypeTuple, witigo.AbiTypeResult:
+		base = w.formatUnnamedTypes(base)
+	}
+	return base
+}
+
+func (w *WitTypeImpl) formatSingleTypeContainer(base string) string {
+	listType := w.SubType()
+	if listType != nil {
+		return base + "<" + listType.String() + ">"
+	}
+	return base
+}
+
+func (w *WitTypeImpl) formatNamedTypes(base string) string {
+	cases := w.SubTypes()
+	if len(cases) == 0 {
+		return base
+	}
+	result := base + "{ "
+	for i, c := range cases {
+		if i > 0 {
+			result += ", "
+		}
+		result += c.Name() + ": " + c.String()
+	}
+	return result + " }"
+}
+
+func (w *WitTypeImpl) formatUnnamedTypes(base string) string {
+	types := w.SubTypes()
+	if len(types) == 0 {
+		return base
+	}
+	result := base + "<"
+	for i, t := range types {
+		if i > 0 {
+			result += ", "
+		}
+		result += t.String()
+	}
+	return result + ">"
 }
