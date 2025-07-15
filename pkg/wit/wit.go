@@ -12,13 +12,15 @@ import (
 )
 
 type WitDefinition interface {
+	Name() string
 	Worlds() []WitWorldDefinition
 	Types() []WitType
 	String() string
 }
 
 type WitDefinitionImpl struct {
-	Raw json.RawMessage
+	name string
+	Raw  json.RawMessage
 }
 
 var _ WitDefinition = &WitDefinitionImpl{}
@@ -55,7 +57,16 @@ func (w *WitDefinitionImpl) String() string {
 	return base
 }
 
+func (w *WitDefinitionImpl) Name() string {
+	return w.name
+}
+
 func NewFromFile(filePath string) (WitDefinition, error) {
+	baseName := filePath
+	if idx := bytes.LastIndexByte([]byte(filePath), '/'); idx != -1 {
+		baseName = filePath[idx+1:]
+	}
+	name := baseName[:len(baseName)-(len(".wit")+1)]
 	ctx := context.Background()
 	runtime, err := wasmtools.New(ctx)
 	if err != nil {
@@ -73,5 +84,5 @@ func NewFromFile(filePath string) (WitDefinition, error) {
 	}
 
 	witJson := stdoutBuffer.String()
-	return &WitDefinitionImpl{Raw: json.RawMessage(witJson)}, nil
+	return &WitDefinitionImpl{Raw: json.RawMessage(witJson), name: name}, nil
 }
