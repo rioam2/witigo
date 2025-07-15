@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/moznion/gowrtr/generator"
 	"github.com/rioam2/witigo/pkg/wit"
 )
 
@@ -31,30 +30,11 @@ func main() {
 
 	fmt.Println("---")
 
-	for _, t := range wit.Types() {
-		typeGenerator := t.CodegenGolangTypedef()
-		if typeGenerator == nil {
-			continue
-		}
-		codeGenerator := generator.NewRoot(typeGenerator)
-		code, err := codeGenerator.Generate(0)
-		if err != nil {
-			fmt.Printf("Error generating code for type %s: %v\n", t.Name(), err)
-			continue
-		}
-		fmt.Println(code)
+	codeGen := wit.Worlds()[0].Codegen()
+	code, err := codeGen.Generate(0)
+	if err != nil {
+		fmt.Printf("Error generating code: %v\n", err)
+		os.Exit(1)
 	}
-
-	fmt.Println()
-
-	for _, f := range wit.Worlds()[0].ExportedFunctions() {
-		funcGenerator := f.Codegen()
-		codeGenerator := generator.NewRoot(funcGenerator)
-		code, err := codeGenerator.Generate(0)
-		if err != nil {
-			fmt.Printf("Error generating code for function %s: %v\n", f.Name(), err)
-			continue
-		}
-		fmt.Println(code)
-	}
+	fmt.Println(code)
 }

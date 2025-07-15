@@ -1,11 +1,16 @@
 package wit
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/moznion/gowrtr/generator"
+)
 
 type WitWorldDefinition interface {
 	Name() string
 	ExportedFunctions() []WitFunction
 	String() string
+	Codegen() *generator.Root
 }
 
 type WitWorldDefinitionImpl struct {
@@ -47,4 +52,23 @@ func (w *WitWorldDefinitionImpl) String() string {
 	}
 	base += "\n}"
 	return base
+}
+
+func (w *WitWorldDefinitionImpl) Codegen() *generator.Root {
+	root := generator.NewRoot()
+	for _, typeDef := range w.Root.Types() {
+		typeGen := typeDef.CodegenGolangTypedef()
+		if typeGen == nil {
+			continue
+		}
+		root = root.AddStatements(typeGen, generator.NewNewline())
+	}
+	for _, function := range w.ExportedFunctions() {
+		funcGen := function.Codegen()
+		if funcGen == nil {
+			continue
+		}
+		root = root.AddStatements(funcGen, generator.NewNewline())
+	}
+	return root
 }
