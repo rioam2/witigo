@@ -2,6 +2,9 @@ package wit
 
 import (
 	"encoding/json"
+
+	"github.com/golang-cz/textcase"
+	"github.com/moznion/gowrtr/generator"
 )
 
 type WitFunction interface {
@@ -9,6 +12,7 @@ type WitFunction interface {
 	Params() []WitTypeReference
 	Returns() WitType
 	String() string
+	Codegen() *generator.Func
 }
 
 type WitFunctionImpl struct {
@@ -62,4 +66,20 @@ func (w *WitFunctionImpl) String() string {
 		params += param.Name() + ": " + param.String()
 	}
 	return w.Name() + ": func (" + params + ") -> " + w.Returns().String()
+}
+
+func (w *WitFunctionImpl) Codegen() *generator.Func {
+	parameters := make([]*generator.FuncParameter, len(w.Params()))
+	for idx, param := range w.Params() {
+		parameters[idx] = generator.NewFuncParameter(
+			textcase.CamelCase(param.Name()),
+			param.Type().CodegenGolangTypename(),
+		)
+	}
+	fn := generator.NewFunc(
+		nil,
+		generator.NewFuncSignature(textcase.PascalCase(w.Name())).
+			AddParameters(parameters...),
+	)
+	return fn
 }

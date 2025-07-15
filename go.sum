@@ -1,3 +1,9 @@
+github.com/golang-cz/textcase v1.2.1 h1:0xRtKo+abtJojre5ONjuMzyg9fSfiKBj5bWZ6fpTYxI=
+github.com/golang-cz/textcase v1.2.1/go.mod h1:aWsQknYwxtTS2zSCrGGoRIsxmzjsHomRqLeMeVb+SKU=
+github.com/moznion/gowrtr v1.7.0 h1:bIOdlAeEHDJEs9o2TIS7Oq3HsPIvxGauPHf3a8IVjXE=
+github.com/moznion/gowrtr v1.7.0/go.mod h1:sjAFodAvRj5fljRjf9yht52GMBVzELkyxcE31B1vJgg=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/tetratelabs/wazero v1.9.0 h1:IcZ56OuxrtaEz8UYNRHBrUa9bYeX9oVY93KspZZBf/I=
 github.com/tetratelabs/wazero v1.9.0/go.mod h1:TSbcXCfFP0L2FGkRPxHphadXPjo1T6W+CseNNY7EkjM=
 go.bytecodealliance.org v0.7.0 h1:CTJ1eb5kFhBKHw1/xycxxz4SmVWNKXYHhrA78oLNXhY=

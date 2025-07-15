@@ -4,8 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/golang-cz/textcase"
+	"github.com/moznion/gowrtr/generator"
 	witigo "github.com/rioam2/witigo/pkg"
 )
+
+const emptyStructGolangTypename = "struct{}"
 
 type WitType interface {
 	Name() string
@@ -13,6 +17,9 @@ type WitType interface {
 	String() string
 	SubType() WitTypeReference
 	SubTypes() []WitTypeReference
+	IsPrimitive() bool
+	CodegenGolangTypename() string
+	CodegenGolangTypedef() *generator.Root
 }
 
 type WitTypeImpl struct {
@@ -245,6 +252,18 @@ func (w *WitTypeImpl) handleResultType(rawResult *json.RawMessage) []WitTypeRefe
 	}
 }
 
+func (w *WitTypeImpl) IsPrimitive() bool {
+	switch w.Kind() {
+	case witigo.AbiTypeString, witigo.AbiTypeBool, witigo.AbiTypeS8, witigo.AbiTypeS16,
+		witigo.AbiTypeS32, witigo.AbiTypeS64, witigo.AbiTypeU8,
+		witigo.AbiTypeU16, witigo.AbiTypeU32, witigo.AbiTypeU64,
+		witigo.AbiTypeF32, witigo.AbiTypeF64, witigo.AbiTypeChar:
+		return true
+	default:
+		return false
+	}
+}
+
 func (w *WitTypeImpl) String() string {
 	base := w.Kind().String()
 	switch w.Kind() {
@@ -294,4 +313,188 @@ func (w *WitTypeImpl) formatUnnamedTypes(base string) string {
 		result += t.String()
 	}
 	return result + ">"
+}
+
+func (w *WitTypeImpl) CodegenGolangTypename() string {
+	kind := w.Kind()
+
+	if w.codegenGolangPrimitiveTypename() != "" {
+		return w.codegenGolangPrimitiveTypename()
+	}
+
+	switch kind {
+	case witigo.AbiTypeTuple:
+		return w.codegenTupleGolangTypename()
+	case witigo.AbiTypeOption:
+		return w.codegenOptionGolangTypename()
+	case witigo.AbiTypeList:
+		return w.codegenListGolangTypename()
+	case witigo.AbiTypeRecord:
+		return w.codegenRecordGolangTypename()
+	case witigo.AbiTypeResult:
+		return w.codegenResultGolangTypename()
+	case witigo.AbiTypeEnum:
+		return w.codegenEnumGolangTypename()
+	case witigo.AbiTypeVariant:
+		return w.codegenVariantGolangTypename()
+	default:
+		if w.Name() != "" && w.Name() != "(none)" {
+			return w.Name()
+		}
+		panic(fmt.Sprintf("Unknown WIT type kind: %s", kind))
+	}
+}
+
+func (w *WitTypeImpl) codegenGolangPrimitiveTypename() string {
+	switch w.Kind() {
+	case witigo.AbiTypeString:
+		return "string"
+	case witigo.AbiTypeBool:
+		return "bool"
+	case witigo.AbiTypeS8:
+		return "int8"
+	case witigo.AbiTypeS16:
+		return "int16"
+	case witigo.AbiTypeS32:
+		return "int32"
+	case witigo.AbiTypeS64:
+		return "int64"
+	case witigo.AbiTypeU8:
+		return "uint8"
+	case witigo.AbiTypeU16:
+		return "uint16"
+	case witigo.AbiTypeU32:
+		return "uint32"
+	case witigo.AbiTypeU64:
+		return "uint64"
+	case witigo.AbiTypeF32:
+		return "float32"
+	case witigo.AbiTypeF64:
+		return "float64"
+	case witigo.AbiTypeChar:
+		return "rune"
+	default:
+		return ""
+	}
+}
+
+func (w *WitTypeImpl) codegenTupleGolangTypename() string {
+	subTypes := w.SubTypes()
+	if len(subTypes) == 0 {
+		return "EmptyTuple"
+	}
+	result := ""
+	for _, t := range subTypes {
+		result += "-" + t.Type().CodegenGolangTypename()
+	}
+	return textcase.PascalCase(result) + "Tuple"
+}
+
+func (w *WitTypeImpl) codegenOptionGolangTypename() string {
+	subType := w.SubType()
+	if subType == nil {
+		panic("Option type must have a subtype")
+	}
+	return "*" + subType.Type().CodegenGolangTypename()
+}
+
+func (w *WitTypeImpl) codegenListGolangTypename() string {
+	subType := w.SubType()
+	if subType == nil {
+		return "[]" + emptyStructGolangTypename
+	}
+	return "[]" + subType.Type().CodegenGolangTypename()
+}
+
+func (w *WitTypeImpl) codegenRecordGolangTypename() string {
+	return textcase.PascalCase(w.Name()) + "Record"
+}
+
+func (w *WitTypeImpl) codegenResultGolangTypename() string {
+	subTypes := w.SubTypes()
+	if len(subTypes) != 2 {
+		panic(fmt.Sprintf("Expected 2 subtypes for Result type, got %d", len(subTypes)))
+	}
+	okType := subTypes[0].Type().CodegenGolangTypename()
+	errType := subTypes[1].Type().CodegenGolangTypename()
+	return textcase.PascalCase(okType+"-"+errType) + "Result"
+}
+
+func (w *WitTypeImpl) codegenEnumGolangTypename() string {
+	return textcase.PascalCase(w.Name()) + "Enum"
+}
+
+func (w *WitTypeImpl) codegenVariantGolangTypename() string {
+	return textcase.PascalCase(w.Name()) + "Variant"
+}
+
+func (w *WitTypeImpl) CodegenGolangTypedef() *generator.Root {
+	var baseType WitType = w
+	for baseType != nil && baseType.SubType().Type() != nil {
+		baseType = baseType.SubType().Type()
+	}
+
+	// Primitive base types do not need a typedef
+	if baseType.IsPrimitive() {
+		return nil
+	}
+
+	switch baseType.Kind() {
+	case witigo.AbiTypeRecord:
+		fields := make([]*generator.FuncSignature, len(baseType.SubTypes()))
+		for i, field := range baseType.SubTypes() {
+			fields[i] = generator.
+				NewFuncSignature(textcase.PascalCase(field.Name())).
+				AddReturnTypes(field.Type().CodegenGolangTypename())
+		}
+		return generator.NewRoot(
+			generator.NewInterface(
+				w.CodegenGolangTypename(),
+				fields...,
+			),
+		)
+	case witigo.AbiTypeResult:
+		okType := baseType.SubTypes()[0].Type().CodegenGolangTypename()
+		errType := baseType.SubTypes()[1].Type().CodegenGolangTypename()
+		return generator.NewRoot(
+			generator.NewInterface(
+				w.CodegenGolangTypename(),
+				generator.NewFuncSignature("Ok").AddReturnTypes(okType),
+				generator.NewFuncSignature("Error").AddReturnTypes(errType),
+			),
+		)
+	case witigo.AbiTypeTuple:
+		subTypes := baseType.SubTypes()
+		fields := make([]*generator.FuncSignature, len(subTypes))
+		for i, subType := range subTypes {
+			fields[i] = generator.
+				NewFuncSignature(textcase.PascalCase(fmt.Sprintf("Field%d", i+1))).
+				AddReturnTypes(subType.Type().CodegenGolangTypename())
+		}
+		return generator.NewRoot(
+			generator.NewInterface(
+				w.CodegenGolangTypename(),
+				fields...,
+			),
+		)
+	case witigo.AbiTypeEnum:
+		root := generator.NewRoot().
+			AddStatements(
+				generator.NewRawStatement(fmt.Sprintf("type %s int", w.CodegenGolangTypename())))
+
+		for i, c := range baseType.SubTypes() {
+			root = root.AddStatements(
+				generator.NewRawStatement(
+					fmt.Sprintf(
+						"const %s = %d",
+						w.CodegenGolangTypename()+textcase.PascalCase(c.Name()),
+						i,
+					),
+				),
+			)
+		}
+		return root
+	default:
+		return nil
+	}
 }
