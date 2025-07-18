@@ -3,6 +3,7 @@ package wit
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"github.com/golang-cz/textcase"
 	"github.com/moznion/gowrtr/generator"
@@ -161,6 +162,11 @@ func (w *WitTypeImpl) SubTypes() []WitTypeReference {
 	return nil
 }
 
+func discriminantSize(n int) int {
+	bits := math.Ceil(math.Log2(float64(n))/8) * 8
+	return int(bits)
+}
+
 func (w *WitTypeImpl) handleRecordType(rawRecord *json.RawMessage) []WitTypeReference {
 	var subTypes []WitTypeReference
 	var record struct {
@@ -193,10 +199,10 @@ func (w *WitTypeImpl) handleEnumType(rawEnum *json.RawMessage) []WitTypeReferenc
 		} `json:"cases"`
 	}
 	json.Unmarshal(*rawEnum, &enum)
+	discriminantType := fmt.Sprintf("u%d", discriminantSize(len(enum.Cases)))
 	for _, c := range enum.Cases {
 		remappedType, err := json.Marshal(map[string]any{
-			// TODO: I believe this is dependent on number of cases
-			"type": "u32",
+			"type": discriminantType,
 			"name": c.Name,
 		})
 		if err != nil {
@@ -429,72 +435,101 @@ func (w *WitTypeImpl) codegenVariantGolangTypename() string {
 }
 
 func (w *WitTypeImpl) CodegenGolangTypedef() *generator.Root {
-	var baseType WitType = w
-	for baseType != nil && baseType.SubType().Type() != nil {
-		baseType = baseType.SubType().Type()
-	}
-
-	// Primitive base types do not need a typedef
-	if baseType.IsPrimitive() {
-		return nil
-	}
-
-	switch baseType.Kind() {
+	switch w.Kind() {
 	case witigo.AbiTypeRecord:
-		fields := make([]*generator.FuncSignature, len(baseType.SubTypes()))
-		for i, field := range baseType.SubTypes() {
-			fields[i] = generator.
-				NewFuncSignature(textcase.PascalCase(field.Name())).
-				AddReturnTypes(field.Type().CodegenGolangTypename())
-		}
-		return generator.NewRoot(
-			generator.NewInterface(
-				w.CodegenGolangTypename(),
-				fields...,
-			),
-		)
+		return w.codegenGolangRecordTypedef()
 	case witigo.AbiTypeResult:
-		okType := baseType.SubTypes()[0].Type().CodegenGolangTypename()
-		errType := baseType.SubTypes()[1].Type().CodegenGolangTypename()
-		return generator.NewRoot(
-			generator.NewInterface(
-				w.CodegenGolangTypename(),
-				generator.NewFuncSignature("Ok").AddReturnTypes(okType),
-				generator.NewFuncSignature("Error").AddReturnTypes(errType),
-			),
-		)
+		return w.codegenGolangResultTypedef()
 	case witigo.AbiTypeTuple:
-		subTypes := baseType.SubTypes()
-		fields := make([]*generator.FuncSignature, len(subTypes))
-		for i, subType := range subTypes {
-			fields[i] = generator.
-				NewFuncSignature(textcase.PascalCase(fmt.Sprintf("Field%d", i+1))).
-				AddReturnTypes(subType.Type().CodegenGolangTypename())
-		}
-		return generator.NewRoot(
-			generator.NewInterface(
-				w.CodegenGolangTypename(),
-				fields...,
-			),
-		)
+		return w.codegenGolangTupleTypedef()
 	case witigo.AbiTypeEnum:
-		root := generator.NewRoot().
-			AddStatements(
-				generator.NewRawStatement(fmt.Sprintf("type %s int", w.CodegenGolangTypename())))
-
-		for i, c := range baseType.SubTypes() {
-			root = root.AddStatements(
-				generator.NewRawStatement(
-					fmt.Sprintf(
-						"const %s = %d",
-						w.CodegenGolangTypename()+textcase.PascalCase(c.Name()),
-						i,
-					),
-				),
-			)
-		}
-		return root
+		return w.codegenGolangEnumTypedef()
+	case witigo.AbiTypeVariant:
+		return w.codegenGolangVariantTypedef()
 	default:
+		// Remaining types are either primitive or do not require a typedef
 		return nil
 	}
+}
+
+func (w *WitTypeImpl) codegenGolangRecordTypedef() *generator.Root {
+	typeDef := generator.NewStruct(w.CodegenGolangTypename())
+	for _, field := range w.SubTypes() {
+		typeDef = typeDef.AddField(
+			textcase.PascalCase(field.Name()),
+			field.Type().CodegenGolangTypename(),
+		)
+	}
+	return generator.NewRoot(typeDef)
+}
+
+func (w *WitTypeImpl) codegenGolangResultTypedef() *generator.Root {
+	okType := w.SubTypes()[0].Type().CodegenGolangTypename()
+	errType := w.SubTypes()[1].Type().CodegenGolangTypename()
+	return generator.NewRoot(
+		generator.NewStruct(w.CodegenGolangTypename()).
+			AddField("Ok", okType).
+			AddField("Error", errType),
+	)
+}
+
+func (w *WitTypeImpl) codegenGolangTupleTypedef() *generator.Root {
+	subTypes := w.SubTypes()
+	typeDef := generator.NewStruct(w.CodegenGolangTypename())
+	for i, subType := range subTypes {
+		typeDef = typeDef.AddField(
+			textcase.PascalCase(fmt.Sprintf("Elem%d", i)),
+			subType.Type().CodegenGolangTypename(),
+		)
+	}
+	return generator.NewRoot(typeDef)
+}
+
+func (w *WitTypeImpl) codegenGolangEnumTypedef() *generator.Root {
+	root := generator.NewRoot()
+	discriminantType := fmt.Sprintf("uint%d", discriminantSize(len(w.SubTypes())))
+	enumTypedef := generator.NewRawStatementf("type %s %s", w.CodegenGolangTypename(), discriminantType)
+	root = root.AddStatements(enumTypedef)
+	for i, c := range w.SubTypes() {
+		statement := generator.NewRawStatementf(
+			"const %s = %d",
+			w.CodegenGolangTypename()+textcase.PascalCase(c.Name()),
+			i,
+		)
+		root = root.AddStatements(statement)
+	}
+	return root
+}
+
+func (w *WitTypeImpl) codegenGolangVariantTypedef() *generator.Root {
+	root := generator.NewRoot()
+	enumTypedefName := w.CodegenGolangTypename() + "Type"
+	enumTypedef := generator.NewRawStatementf("type %s int", enumTypedefName)
+	root = root.AddStatements(enumTypedef)
+	for i, c := range w.SubTypes() {
+		statement := generator.NewRawStatementf(
+			"const %s = %d",
+			enumTypedefName+textcase.PascalCase(c.Name()),
+			i,
+		)
+		root = root.AddStatements(statement)
+	}
+	structTypedef := generator.NewStruct(w.CodegenGolangTypename())
+	structTypedef = structTypedef.AddField(
+		textcase.PascalCase("Type"),
+		enumTypedefName,
+	)
+	for _, field := range w.SubTypes() {
+		fieldType := "struct{}"
+		if field.Type() != nil {
+			fieldType = field.Type().CodegenGolangTypename()
+		}
+		structTypedef = structTypedef.AddField(
+			textcase.PascalCase(field.Name()),
+			fieldType,
+		)
+	}
+
+	root = root.AddStatements(structTypedef)
+	return root
 }

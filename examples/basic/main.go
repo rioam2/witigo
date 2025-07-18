@@ -31,7 +31,8 @@ func main() {
 	fmt.Println("---")
 
 	codeGen := wit.Worlds()[0].Codegen()
-	code, err := codeGen.Generate(0)
+	code, err := codeGen.EnableSyntaxChecking().Gofmt().Generate(0)
+
 	if err != nil {
 		fmt.Printf("Error generating code: %v\n", err)
 		os.Exit(1)
