@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rioam2/witigo/pkg/wit"
+	"github.com/rioam2/witigo/pkg/codegen"
 )
 
 func main() {
@@ -13,29 +13,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Extract JSON representation of WebAssembly Interface Types (WIT) from the given file
 	inputFile := os.Args[1]
-	wit, err := wit.NewFromFile(inputFile)
-	if err != nil {
-		fmt.Printf("Error extracting WIT: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println(wit.String())
-	fmt.Println("---")
-	fmt.Println("Types:")
-	for idx, t := range wit.Types() {
-		fmt.Printf("  %d: %s: %s\n", idx, t.Name(), t.String())
-	}
-
-	fmt.Println("---")
-
-	codeGen := wit.Worlds()[0].Codegen()
-	code, err := codeGen.EnableSyntaxChecking().Gofmt().Generate(0)
-
+	code, err := codegen.GenerateFromFile(inputFile)
 	if err != nil {
 		fmt.Printf("Error generating code: %v\n", err)
 		os.Exit(1)
 	}
+
 	fmt.Println(code)
 }
