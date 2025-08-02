@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/rioam2/witigo/pkg/codegen"
 )
@@ -13,8 +14,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	inputFile := os.Args[1]
-	outDir := os.Args[2]
+	inputFile, err := filepath.Abs(os.Args[1])
+	if err != nil {
+		fmt.Printf("Error resolving input file path: %v\n", err)
+		os.Exit(1)
+	}
+	if _, err := os.Stat(inputFile); os.IsNotExist(err) {
+		fmt.Printf("Input file does not exist: %s\n", inputFile)
+		os.Exit(1)
+	}
+
+	outDir, err := filepath.Abs(os.Args[2])
+	if err != nil {
+		fmt.Printf("Error resolving output directory path: %v\n", err)
+		os.Exit(1)
+	}
 
 	if _, err := os.Stat(outDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(outDir, 0755); err != nil {
@@ -23,7 +37,7 @@ func main() {
 		}
 	}
 
-	err := codegen.GenerateFromFile(inputFile, outDir)
+	err = codegen.GenerateFromFile(inputFile, outDir)
 	if err != nil {
 		fmt.Printf("Error generating code: %v\n", err)
 		os.Exit(1)
