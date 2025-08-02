@@ -11,7 +11,6 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -126,7 +125,7 @@ func (w *Instance) Close(ctx context.Context) error {
 // and optional stdin, stdout, stderr, and filesystem map.
 // Supply a context with a timeout or other cancellation mechanism to control execution time.
 // Returns an error if instantiation fails.
-func (w *Instance) Run(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer, fsMap map[string]fs.FS, args ...string) error {
+func (w *Instance) Run(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer, fsMap map[string]string, args ...string) error {
 	config := wazero.NewModuleConfig().
 		WithRandSource(rand.Reader).
 		WithSysNanosleep().
@@ -146,7 +145,7 @@ func (w *Instance) Run(ctx context.Context, stdin io.Reader, stdout, stderr io.W
 
 	fsConfig := wazero.NewFSConfig()
 	for guestPath, guestFS := range fsMap {
-		fsConfig = fsConfig.WithFSMount(guestFS, guestPath)
+		fsConfig = fsConfig.WithDirMount(guestFS, guestPath)
 	}
 	config = config.WithFSConfig(fsConfig)
 

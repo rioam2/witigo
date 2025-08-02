@@ -14,4 +14,4 @@ tasks:
     dir: examples/basic
     cmds:
       - cd lib && cmake --workflow --preset wasi
-      - go run ./main.go ./lib/build/wasi/src/basic_example_component.wasm
+      - go run ./main.go ./lib/build/wasi/src/basic_example_component.wasm ./generated
