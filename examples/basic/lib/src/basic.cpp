@@ -4,31 +4,31 @@
 #include "bindings/basic_example.c"
 #include "bindings/basic_example.h"
 
-void basic_example_string_func(basic_example_string_t* input,
-                               basic_example_string_t* ret) {
+void exports_basic_example_string_func(basic_example_string_t* input,
+                                       basic_example_string_t* ret) {
   ret->ptr = (uint8_t*)realloc(ret->ptr, input->len);
   memcpy(ret->ptr, input->ptr, input->len);
 }
 
-void basic_example_record_func(basic_example_customer_t* input,
-                               basic_example_customer_t* ret) {
-  basic_example_string_func(&input->name, &ret->name);
+void exports_basic_example_record_func(basic_example_customer_t* input,
+                                       basic_example_customer_t* ret) {
+  exports_basic_example_string_func(&input->name, &ret->name);
 }
 
-void basic_example_tuple_func(basic_example_tuple2_string_u32_t* input,
-                              basic_example_tuple2_string_u32_t* ret) {
-  basic_example_string_func(&input->f0, &ret->f0);
+void exports_basic_example_tuple_func(basic_example_tuple2_string_u32_t* input,
+                                      basic_example_tuple2_string_u32_t* ret) {
+  exports_basic_example_string_func(&input->f0, &ret->f0);
   ret->f1 = input->f1;
 }
 
-void basic_example_list_func(basic_example_list_u64_t* input,
-                             basic_example_list_u64_t* ret) {
+void exports_basic_example_list_func(basic_example_list_u64_t* input,
+                                     basic_example_list_u64_t* ret) {
   ret->len = input->len;
   ret->ptr = (uint64_t*)realloc(ret->ptr, input->len * sizeof(uint64_t));
   memcpy(ret->ptr, input->ptr, input->len * sizeof(uint64_t));
 }
 
-bool basic_example_option_func(uint64_t* maybe_input, uint64_t* ret) {
+bool exports_basic_example_option_func(uint64_t* maybe_input, uint64_t* ret) {
   if (maybe_input) {
     *ret = *maybe_input;
     return true;
@@ -37,9 +37,9 @@ bool basic_example_option_func(uint64_t* maybe_input, uint64_t* ret) {
   }
 }
 
-bool basic_example_result_func(basic_example_result_u64_string_t* input,
-                               uint64_t* ret,
-                               basic_example_string_t* err) {
+bool exports_basic_example_result_func(basic_example_result_u64_string_t* input,
+                                       uint64_t* ret,
+                                       basic_example_string_t* err) {
   if (input->is_err) {
     *err = input->val.err;
     return false;
@@ -49,8 +49,9 @@ bool basic_example_result_func(basic_example_result_u64_string_t* input,
   }
 }
 
-void basic_example_variant_func(basic_example_allowed_destinations_t* input,
-                                basic_example_allowed_destinations_t* ret) {
+void exports_basic_example_variant_func(
+    basic_example_allowed_destinations_t* input,
+    basic_example_allowed_destinations_t* ret) {
   if (input->tag == BASIC_EXAMPLE_ALLOWED_DESTINATIONS_NONE) {
     ret->tag = BASIC_EXAMPLE_ALLOWED_DESTINATIONS_NONE;
   } else if (input->tag == BASIC_EXAMPLE_ALLOWED_DESTINATIONS_ANY) {
@@ -66,7 +67,8 @@ void basic_example_variant_func(basic_example_allowed_destinations_t* input,
   }
 }
 
-basic_example_color_t basic_example_enum_func(basic_example_color_t input) {
+basic_example_color_t exports_basic_example_enum_func(
+    basic_example_color_t input) {
   switch (input) {
     case BASIC_EXAMPLE_COLOR_HOT_PINK:
       return BASIC_EXAMPLE_COLOR_HOT_PINK;
