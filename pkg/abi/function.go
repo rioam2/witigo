@@ -4,30 +4,28 @@ import (
 	"fmt"
 )
 
-func Call(opts AbiOptions, name string, params ...uint64) (ret uint32, err error) {
+func Call(opts AbiOptions, name string, params ...uint64) (ret uint32, postReturn func() error, err error) {
 	if opts.Func == nil {
-		return 0, fmt.Errorf("module is not set in AbiOptions")
+		return 0, nil, fmt.Errorf("module is not set in AbiOptions")
 	}
 	fn := opts.Func(name)
 	if fn == nil {
-		return 0, fmt.Errorf("function %s not found in module", name)
+		return 0, nil, fmt.Errorf("function %s not found in module", name)
 	}
 	results, err := fn.Call(opts.Context, params...)
 	if err != nil {
-		return 0, fmt.Errorf("failed to call function %s: %w", name, err)
+		return 0, nil, fmt.Errorf("failed to call function %s: %w", name, err)
 	}
 	if len(results) > 0 {
 		ret = uint32(results[0])
 	}
-	postFn := opts.Func("cabi_post_" + name)
-	if postFn != nil {
-		defer func() {
-			_, postErr := postFn.Call(opts.Context, uint64(ret))
-			if postErr != nil {
-				ret = 0
-				err = fmt.Errorf("post function call failed: %w", postErr)
-			}
-		}()
+	postReturn = func() error {
+		postFn := opts.Func("cabi_post_" + name)
+		if postFn != nil {
+			_, err := postFn.Call(opts.Context, uint64(ret))
+			return err
+		}
+		return nil
 	}
-	return ret, err
+	return ret, postReturn, err
 }

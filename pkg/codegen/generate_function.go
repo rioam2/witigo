@@ -18,10 +18,11 @@ func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *
 		switch param.Type().Kind() {
 		case witigo.AbiTypeString:
 			fn = fn.AddStatements(
-				generator.NewRawStatementf("arg%02dPtr, arg%02dUnits, err := abi.WriteString(i.abiOpts, %s)", idx, idx, textcase.CamelCase(param.Name())),
+				generator.NewRawStatementf("arg%02dPtr, arg%02dSize, arg%02dUnits, err := abi.WriteString(i.abiOpts, %s)", idx, idx, idx, textcase.CamelCase(param.Name())),
 				generator.NewRawStatementf("if err != nil {"),
 				generator.NewRawStatementf("  panic(fmt.Errorf(\"failed to write string: %%w\", err))"),
 				generator.NewRawStatementf("}"),
+				generator.NewRawStatementf("defer abi.FreeString(i.abiOpts, arg%02dPtr, arg%02dSize)", idx, idx),
 				generator.NewRawStatementf("args = append(args, uint64(arg%02dPtr), uint64(arg%02dUnits))", idx, idx),
 			)
 		default:
@@ -33,10 +34,11 @@ func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *
 	switch w.Returns().Kind() {
 	case witigo.AbiTypeString:
 		fn = fn.AddStatements(
-			generator.NewRawStatementf("ret, err := abi.Call(i.abiOpts, \"%s\", args...)", textcase.KebabCase(w.Name())),
+			generator.NewRawStatementf("ret, postReturn, err := abi.Call(i.abiOpts, \"%s\", args...)", textcase.KebabCase(w.Name())),
 			generator.NewRawStatementf("if err != nil {"),
 			generator.NewRawStatementf("  panic(fmt.Errorf(\"failed to call %s: %%w\", err))", textcase.KebabCase(w.Name())),
 			generator.NewRawStatementf("}"),
+			generator.NewRawStatementf("defer postReturn()"),
 			generator.NewRawStatementf("result, err = abi.ReadString(i.abiOpts, ret)"),
 			generator.NewRawStatementf("if err != nil {"),
 			generator.NewRawStatementf("  panic(fmt.Errorf(\"failed to read string result: %%w\", err))"),

@@ -47,7 +47,7 @@ func ReadString(opts AbiOptions, ptr uint32) (string, error) {
 	}
 }
 
-func WriteString(opts AbiOptions, str string) (uint32, uint32, error) {
+func WriteString(opts AbiOptions, str string) (uint32, uint32, uint32, error) {
 	strEncoding := opts.StringEncoding
 	strAlignment := strEncoding.Alignment()
 	var codeUnits uint32 = uint32(len(str))
@@ -60,18 +60,30 @@ func WriteString(opts AbiOptions, str string) (uint32, uint32, error) {
 		encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
 		strData, err = encoder.Bytes([]byte(str))
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 	default:
-		return 0, 0, fmt.Errorf("unsupported string encoding: %s", strEncoding)
+		return 0, 0, 0, fmt.Errorf("unsupported string encoding: %s", strEncoding)
 	}
-	ptr, err := Call(opts, "cabi_realloc", 0, 0, uint64(strAlignment), uint64(len(strData)))
+	strByteSize := len(strData)
+	ptr, _, err := Call(opts, "cabi_realloc", 0, 0, uint64(strAlignment), uint64(strByteSize))
 	if err != nil || ptr == 0 {
-		return 0, 0, fmt.Errorf("failed to allocate memory for string: %w", err)
+		return 0, 0, 0, fmt.Errorf("failed to allocate memory for string: %w", err)
 	}
 	ok := opts.Memory.Write(ptr, strData)
 	if !ok {
-		return 0, 0, fmt.Errorf("failed to write string data to memory at %d", ptr)
+		return 0, 0, 0, fmt.Errorf("failed to write string data to memory at %d", ptr)
 	}
-	return ptr, codeUnits, nil
+	return ptr, uint32(strByteSize), codeUnits, nil
+}
+
+func FreeString(opts AbiOptions, ptr uint32, size uint32) error {
+	if ptr == 0 || size == 0 {
+		return nil
+	}
+	_, _, err := Call(opts, "cabi_realloc", uint64(ptr), uint64(size), 0, 0)
+	if err != nil {
+		return fmt.Errorf("failed to free string memory at %d: %w", ptr, err)
+	}
+	return nil
 }
