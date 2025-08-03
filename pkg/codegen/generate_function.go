@@ -6,19 +6,10 @@ import (
 	"github.com/rioam2/witigo/pkg/wit"
 )
 
-func GenerateFromFunction(w wit.WitFunction) *generator.Func {
-	parameters := make([]*generator.FuncParameter, len(w.Params()))
-	for idx, param := range w.Params() {
-		parameters[idx] = generator.NewFuncParameter(
-			textcase.CamelCase(param.Name()),
-			GenerateTypenameFromType(param.Type()),
-		)
-	}
+func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *generator.Func {
 	fn := generator.NewFunc(
-		nil,
-		generator.NewFuncSignature(textcase.PascalCase(w.Name())).
-			AddParameters(parameters...).
-			AddReturnTypes(GenerateTypenameFromType(w.Returns())),
+		receiver,
+		GenerateSignatureFromFunction(w),
 	)
 	fn = fn.AddStatements(
 		generator.NewRawStatement("// TODO: Implement function body"),
@@ -26,4 +17,17 @@ func GenerateFromFunction(w wit.WitFunction) *generator.Func {
 		generator.NewRawStatement("return result"),
 	)
 	return fn
+}
+
+func GenerateSignatureFromFunction(w wit.WitFunction) *generator.FuncSignature {
+	parameters := make([]*generator.FuncParameter, len(w.Params()))
+	for idx, param := range w.Params() {
+		parameters[idx] = generator.NewFuncParameter(
+			textcase.CamelCase(param.Name()),
+			GenerateTypenameFromType(param.Type()),
+		)
+	}
+	return generator.NewFuncSignature(textcase.PascalCase(w.Name())).
+		AddParameters(parameters...).
+		AddReturnTypes(GenerateTypenameFromType(w.Returns()))
 }
