@@ -26,7 +26,7 @@ func GenerateFromFile(componentPath string, outDir string) error {
 	}
 
 	outputFile := fmt.Sprintf("%s/%s.go", outDir, componentName)
-	err = os.WriteFile(outputFile, []byte(code), 0644)
+	err = os.WriteFile(outputFile, []byte(code), 0666)
 	if err != nil {
 		return fmt.Errorf("error writing generated code to file %s: %w", outputFile, err)
 	}
@@ -38,7 +38,7 @@ func GenerateFromFile(componentPath string, outDir string) error {
 	}
 
 	outputCoreModuleFile := fmt.Sprintf("%s/%s_core.wasm", outDir, componentName)
-	err = os.WriteFile(outputCoreModuleFile, coreModule, 0644)
+	err = os.WriteFile(outputCoreModuleFile, coreModule, 0666)
 	if err != nil {
 		return fmt.Errorf("error writing core module to file %s: %w", outputCoreModuleFile, err)
 	}
