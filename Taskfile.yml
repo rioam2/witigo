@@ -11,7 +11,7 @@ tasks:
     cmds:
       - go test ./test
   basic_example:
-    dir: examples/basic
     cmds:
-      - cd lib && cmake --workflow --preset wasi
-      - go run ./main.go ./lib/build/wasi/src/basic_example_component.wasm ./generated
+      - cd ./examples/basic/lib && cmake --workflow --preset wasi
+      - go run ./cmd/main.go generate ./examples/basic/lib/build/wasi/src/basic_example_component.wasm ./examples/basic/generated
+      - go run ./examples/basic/host/main.go
