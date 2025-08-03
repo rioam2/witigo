@@ -1,6 +1,8 @@
 package codegen
 
 import (
+	"fmt"
+
 	"github.com/golang-cz/textcase"
 	"github.com/moznion/gowrtr/generator"
 	"github.com/rioam2/witigo/pkg/wit"
@@ -12,7 +14,10 @@ func GenerateFromWorld(w wit.WitWorldDefinition, packageName string) *generator.
 		generator.NewComment(" World: "+w.Name()),
 		generator.NewNewline(),
 		generator.NewPackage(textcase.SnakeCase(packageName)),
+		generator.NewRawStatement("import _ \"embed\""),
 		generator.NewNewline(),
+		generator.NewComment(fmt.Sprintf("go:embed %s_core.wasm", textcase.SnakeCase(packageName))),
+		generator.NewRawStatement("var coreModule []byte"),
 	)
 	for _, t := range w.Types() {
 		typeGen := GenerateTypedefFromType(t)
