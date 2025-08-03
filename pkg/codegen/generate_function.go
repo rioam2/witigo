@@ -17,10 +17,13 @@ func GenerateFromFunction(w wit.WitFunction) *generator.Func {
 	fn := generator.NewFunc(
 		nil,
 		generator.NewFuncSignature(textcase.PascalCase(w.Name())).
-			AddParameters(parameters...),
+			AddParameters(parameters...).
+			AddReturnTypes(GenerateTypenameFromType(w.Returns())),
 	)
 	fn = fn.AddStatements(
 		generator.NewRawStatement("// TODO: Implement function body"),
+		generator.NewRawStatementf("var result %s", GenerateTypenameFromType(w.Returns())),
+		generator.NewRawStatement("return result"),
 	)
 	return fn
 }
