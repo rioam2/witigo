@@ -8,11 +8,10 @@ import (
 	witigo "github.com/rioam2/witigo/pkg"
 )
 
-const emptyStructGolangTypename = "struct{}"
-
 type WitType interface {
 	Name() string
 	Kind() witigo.AbiType
+	Owner() *string
 	String() string
 	SubType() WitTypeReference
 	SubTypes() []WitTypeReference
@@ -38,6 +37,7 @@ func (w *WitTypeImpl) Name() string {
 }
 
 func (w *WitTypeImpl) Kind() witigo.AbiType {
+	fmt.Printf("WitTypeImpl.Kind: %s\n", w.Raw)
 	var data struct {
 		Kind *struct {
 			List    *json.RawMessage `json:"list"`
@@ -103,6 +103,28 @@ func (w *WitTypeImpl) Kind() witigo.AbiType {
 		return witigo.AbiTypeEnum
 	}
 	panic(fmt.Sprintf("Unknown WIT type kind: %v", data.Kind))
+}
+
+func (w *WitTypeImpl) Owner() *string {
+	var data struct {
+		Owner *struct {
+			Interface *float64 `json:"interface"`
+			World     *float64 `json:"world"`
+		} `json:"owner"`
+	}
+	json.Unmarshal(w.Raw, &data)
+	if data.Owner == nil {
+		return nil
+	}
+	if data.Owner.World != nil {
+		name := w.Root.Worlds()[int(*data.Owner.World)].Name()
+		return &name
+	}
+	if data.Owner.Interface != nil {
+		name := fmt.Sprintf("interface %d", int(*data.Owner.Interface))
+		return &name
+	}
+	return nil
 }
 
 func (w *WitTypeImpl) SubType() WitTypeReference {
