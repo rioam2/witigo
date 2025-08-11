@@ -83,9 +83,6 @@ func ExtractComponentCoreModule(path string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading core module directory: %w", err)
 	}
-	if len(coreModuleFiles) != 1 {
-		return nil, fmt.Errorf("expected exactly one file in core module directory, got %d", len(coreModuleFiles))
-	}
 	coreModuleFile := coreModuleFiles[0]
 	coreModulePath := filepath.Join(coreModuleDir, coreModuleFile.Name())
 	coreModuleData, err := os.ReadFile(coreModulePath)

@@ -1,13 +1,17 @@
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 #include "bindings/basic_example.c"
 #include "bindings/basic_example.h"
 
 void exports_basic_example_string_func(basic_example_string_t* input,
                                        basic_example_string_t* ret) {
-  ret->ptr = (uint8_t*)realloc(ret->ptr, input->len);
-  memcpy(ret->ptr, input->ptr, input->len);
+  std::string transformed_string((char*)input->ptr, input->len);
+  transformed_string += " - modified by C++";
+  ret->len = transformed_string.size();
+  ret->ptr = (uint8_t*)realloc(ret->ptr, ret->len);
+  memcpy(ret->ptr, transformed_string.data(), transformed_string.size());
 }
 
 void exports_basic_example_record_func(basic_example_customer_t* input,

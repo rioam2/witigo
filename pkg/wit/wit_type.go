@@ -16,6 +16,7 @@ type WitType interface {
 	SubType() WitTypeReference
 	SubTypes() []WitTypeReference
 	IsPrimitive() bool
+	IsExported() bool
 }
 
 type WitTypeImpl struct {
@@ -37,8 +38,18 @@ func (w *WitTypeImpl) Name() string {
 }
 
 func (w *WitTypeImpl) Kind() witigo.AbiType {
-	fmt.Printf("WitTypeImpl.Kind: %s\n", w.Raw)
-	var data struct {
+	var dataVer1 struct {
+		Kind *string `json:"kind"`
+	}
+	err := json.Unmarshal(w.Raw, &dataVer1)
+	if err == nil && dataVer1.Kind != nil {
+		switch *dataVer1.Kind {
+		case "resource":
+			return witigo.AbiTypeResource
+		}
+	}
+
+	var dataVer2 struct {
 		Kind *struct {
 			List    *json.RawMessage `json:"list"`
 			Option  *json.RawMessage `json:"option"`
@@ -47,12 +58,14 @@ func (w *WitTypeImpl) Kind() witigo.AbiType {
 			Result  *json.RawMessage `json:"result"`
 			Variant *json.RawMessage `json:"variant"`
 			Enum    *json.RawMessage `json:"enum"`
+			Type    *json.RawMessage `json:"type"`
+			Handle  *json.RawMessage `json:"handle"`
 		} `json:"kind"`
 		Type *string `json:"type"`
 	}
-	json.Unmarshal(w.Raw, &data)
-	if data.Type != nil {
-		switch *data.Type {
+	json.Unmarshal(w.Raw, &dataVer2)
+	if dataVer2.Type != nil {
+		switch *dataVer2.Type {
 		case "string":
 			return witigo.AbiTypeString
 		case "bool":
@@ -81,28 +94,42 @@ func (w *WitTypeImpl) Kind() witigo.AbiType {
 			return witigo.AbiTypeChar
 		}
 	}
-	if data.Kind.List != nil {
+	if dataVer2.Kind.List != nil {
 		return witigo.AbiTypeList
 	}
-	if data.Kind.Option != nil {
+	if dataVer2.Kind.Option != nil {
 		return witigo.AbiTypeOption
 	}
-	if data.Kind.Record != nil {
+	if dataVer2.Kind.Record != nil {
 		return witigo.AbiTypeRecord
 	}
-	if data.Kind.Tuple != nil {
+	if dataVer2.Kind.Tuple != nil {
 		return witigo.AbiTypeTuple
 	}
-	if data.Kind.Result != nil {
+	if dataVer2.Kind.Result != nil {
 		return witigo.AbiTypeResult
 	}
-	if data.Kind.Variant != nil {
+	if dataVer2.Kind.Variant != nil {
 		return witigo.AbiTypeVariant
 	}
-	if data.Kind.Enum != nil {
+	if dataVer2.Kind.Enum != nil {
 		return witigo.AbiTypeEnum
 	}
-	panic(fmt.Sprintf("Unknown WIT type kind: %v", data.Kind))
+	if dataVer2.Kind.Type != nil {
+		rawTypeRef, err := json.Marshal(map[string]any{
+			"type": dataVer2.Kind.Type,
+			"name": w.Name(),
+		})
+		if err != nil {
+			panic(fmt.Sprintf("Failed to marshal type reference: %v", err))
+		}
+		ref := &WitTypeReferenceImpl{Raw: rawTypeRef, Root: w.Root}
+		return ref.Type().Kind()
+	}
+	if dataVer2.Kind.Handle != nil {
+		return witigo.AbiTypeHandle
+	}
+	panic(fmt.Sprintf("Unknown WIT type kind: %v", dataVer2.Kind))
 }
 
 func (w *WitTypeImpl) Owner() *string {
@@ -112,8 +139,8 @@ func (w *WitTypeImpl) Owner() *string {
 			World     *float64 `json:"world"`
 		} `json:"owner"`
 	}
-	json.Unmarshal(w.Raw, &data)
-	if data.Owner == nil {
+	err := json.Unmarshal(w.Raw, &data)
+	if err != nil || data.Owner == nil {
 		return nil
 	}
 	if data.Owner.World != nil {
@@ -132,17 +159,30 @@ func (w *WitTypeImpl) SubType() WitTypeReference {
 		Kind struct {
 			List   *any `json:"list"`
 			Option *any `json:"option"`
+			Handle *struct {
+				Own    *json.RawMessage `json:"own"`
+				Borrow *json.RawMessage `json:"borrow"`
+			}
 		} `json:"kind"`
 	}
-	json.Unmarshal(w.Raw, &data)
-	var listOrOptionType any
+	err := json.Unmarshal(w.Raw, &data)
+	if err != nil {
+		return nil
+	}
+	var subTypeRef any = nil
 	if data.Kind.List != nil {
-		listOrOptionType = data.Kind.List
+		subTypeRef = data.Kind.List
 	} else if data.Kind.Option != nil {
-		listOrOptionType = data.Kind.Option
+		subTypeRef = data.Kind.Option
+	} else if data.Kind.Handle != nil {
+		if data.Kind.Handle.Own != nil {
+			subTypeRef = data.Kind.Handle.Own
+		} else if data.Kind.Handle.Borrow != nil {
+			subTypeRef = data.Kind.Handle.Borrow
+		}
 	}
 	rawTypeRef, err := json.Marshal(map[string]any{
-		"type": listOrOptionType,
+		"type": subTypeRef,
 		"name": w.Name(),
 	})
 	if err != nil {
@@ -161,7 +201,10 @@ func (w *WitTypeImpl) SubTypes() []WitTypeReference {
 			Result  *json.RawMessage `json:"result"`
 		} `json:"kind"`
 	}
-	json.Unmarshal(w.Raw, &data)
+	err := json.Unmarshal(w.Raw, &data)
+	if err != nil {
+		return nil
+	}
 	if data.Kind.Record != nil {
 		return w.handleRecordType(data.Kind.Record)
 	}
@@ -281,11 +324,28 @@ func (w *WitTypeImpl) IsPrimitive() bool {
 	case witigo.AbiTypeString, witigo.AbiTypeBool, witigo.AbiTypeS8, witigo.AbiTypeS16,
 		witigo.AbiTypeS32, witigo.AbiTypeS64, witigo.AbiTypeU8,
 		witigo.AbiTypeU16, witigo.AbiTypeU32, witigo.AbiTypeU64,
-		witigo.AbiTypeF32, witigo.AbiTypeF64, witigo.AbiTypeChar:
+		witigo.AbiTypeF32, witigo.AbiTypeF64, witigo.AbiTypeChar,
+		witigo.AbiTypeResource:
 		return true
 	default:
 		return false
 	}
+}
+
+func (w *WitTypeImpl) IsExported() bool {
+	for _, world := range w.Root.Worlds() {
+		for _, export := range world.ExportedFunctions() {
+			if export.Returns().String() == w.String() {
+				return true
+			}
+			for _, arg := range export.Params() {
+				if arg.String() == w.String() {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (w *WitTypeImpl) String() string {

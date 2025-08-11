@@ -13,6 +13,10 @@ import (
 const emptyStructGolangTypename = "struct{}"
 
 func GenerateTypenameFromType(w wit.WitType) string {
+	if w == nil {
+		return emptyStructGolangTypename
+	}
+
 	kind := w.Kind()
 
 	if generatePrimitiveTypenameFromType(w) != "" {
@@ -34,6 +38,8 @@ func GenerateTypenameFromType(w wit.WitType) string {
 		return generateEnumTypenameFromType(w)
 	case witigo.AbiTypeVariant:
 		return generateVariantTypenameFromType(w)
+	case witigo.AbiTypeHandle:
+		return generateHandleTypenameFromType(w)
 	default:
 		if w.Name() != "" && w.Name() != "(none)" {
 			return w.Name()
@@ -130,6 +136,14 @@ func generateVariantTypenameFromType(w wit.WitType) string {
 	return textcase.PascalCase(w.Name()) + "Variant"
 }
 
+func generateHandleTypenameFromType(w wit.WitType) string {
+	subType := w.SubType()
+	if subType == nil {
+		return "Handle"
+	}
+	return textcase.PascalCase(GenerateTypenameFromType(subType.Type()) + "Handle")
+}
+
 func GenerateTypedefFromType(w wit.WitType) *generator.Root {
 	switch w.Kind() {
 	case witigo.AbiTypeRecord:
@@ -142,6 +156,8 @@ func GenerateTypedefFromType(w wit.WitType) *generator.Root {
 		return generateEnumTypedefFromType(w)
 	case witigo.AbiTypeVariant:
 		return generateVariantTypedefFromType(w)
+	case witigo.AbiTypeHandle:
+		return generateHandleTypedefFromType(w)
 	default:
 		// Remaining types are either primitive or do not require a typedef
 		return nil
@@ -228,4 +244,14 @@ func generateVariantTypedefFromType(w wit.WitType) *generator.Root {
 
 	root = root.AddStatements(structTypedef)
 	return root
+}
+
+func generateHandleTypedefFromType(w wit.WitType) *generator.Root {
+	return generator.NewRoot(
+		generator.NewStruct(GenerateTypenameFromType(w)).
+			AddField(
+				textcase.PascalCase("Type"),
+				textcase.PascalCase(GenerateTypenameFromType(w.SubType().Type())),
+			),
+	)
 }

@@ -31,6 +31,8 @@ const (
 	AbiTypeEnum
 	AbiTypeOption
 	AbiTypeResult
+	AbiTypeResource
+	AbiTypeHandle
 )
 
 func (a AbiType) String() string {
@@ -87,6 +89,10 @@ func (a AbiType) String() string {
 		return "enum"
 	case AbiTypeResult:
 		return "result"
+	case AbiTypeResource:
+		return "resource"
+	case AbiTypeHandle:
+		return "handle"
 	default:
 		return "UnknownAbiType(" + string(rune(a)) + ")"
 	}
