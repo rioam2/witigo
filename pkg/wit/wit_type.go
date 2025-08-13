@@ -16,7 +16,6 @@ type WitType interface {
 	SubType() WitTypeReference
 	SubTypes() []WitTypeReference
 	IsPrimitive() bool
-	IsExported() bool
 }
 
 type WitTypeImpl struct {
@@ -330,22 +329,6 @@ func (w *WitTypeImpl) IsPrimitive() bool {
 	default:
 		return false
 	}
-}
-
-func (w *WitTypeImpl) IsExported() bool {
-	for _, world := range w.Root.Worlds() {
-		for _, export := range world.ExportedFunctions() {
-			if export.Returns().String() == w.String() {
-				return true
-			}
-			for _, arg := range export.Params() {
-				if arg.String() == w.String() {
-					return true
-				}
-			}
-		}
-	}
-	return false
 }
 
 func (w *WitTypeImpl) String() string {

@@ -42,7 +42,7 @@ func ExtractComponentWitJson(path string) (json.RawMessage, string, error) {
 }
 
 // ExtractComponentCoreModule extracts a core WebAssembly module from a component file
-func ExtractComponentCoreModule(path string) ([]byte, error) {
+func ExtractComponentCoreModule(path string) (result []byte, err error) {
 	componentAbsolutePath, err := filepath.Abs(path)
 	componentDirname := filepath.Dir(componentAbsolutePath)
 	if err != nil {
@@ -78,23 +78,21 @@ func ExtractComponentCoreModule(path string) ([]byte, error) {
 		return nil, fmt.Errorf("error running wasm-tools: %w\n%s\n%s", err, stderrBuffer.String(), stdoutBuffer.String())
 	}
 
+	// Clean up the temporary directory after the function returns
+	defer func() {
+		if err = os.RemoveAll(coreModuleDir); err != nil {
+			err = fmt.Errorf("error removing temporary directory: %w", err)
+			result = nil
+		}
+	}()
+
 	// Read the core module output from the temporary directory
-	coreModuleFiles, err := os.ReadDir(coreModuleDir)
-	if err != nil {
-		return nil, fmt.Errorf("error reading core module directory: %w", err)
-	}
-	coreModuleFile := coreModuleFiles[0]
-	coreModulePath := filepath.Join(coreModuleDir, coreModuleFile.Name())
-	coreModuleData, err := os.ReadFile(coreModulePath)
+	coreModulePath := filepath.Join(coreModuleDir, "unbundled-module0.wasm")
+	result, err = os.ReadFile(coreModulePath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading core module file: %w", err)
 	}
 
-	// Clean up the temporary directory
-	if err := os.RemoveAll(coreModuleDir); err != nil {
-		return nil, fmt.Errorf("error removing core module directory: %w", err)
-	}
-
 	// Return the core module data
-	return coreModuleData, nil
+	return result, nil
 }

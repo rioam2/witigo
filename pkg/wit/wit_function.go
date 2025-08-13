@@ -9,6 +9,7 @@ type WitFunction interface {
 	Params() []WitTypeReference
 	Returns() WitType
 	String() string
+	ReferencesType(w WitType) bool
 }
 
 type WitFunctionImpl struct {
@@ -62,4 +63,16 @@ func (w *WitFunctionImpl) String() string {
 		params += param.Name() + ": " + param.String()
 	}
 	return w.Name() + ": func (" + params + ") -> " + w.Returns().String()
+}
+
+func (w *WitFunctionImpl) ReferencesType(t WitType) bool {
+	for _, param := range w.Params() {
+		if param.Type().String() == t.String() && param.Type().Kind() == t.Kind() {
+			return true
+		}
+	}
+	if w.Returns().String() == t.String() && w.Returns().Kind() == t.Kind() {
+		return true
+	}
+	return false
 }

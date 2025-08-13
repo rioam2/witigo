@@ -9,6 +9,7 @@ type WitWorldDefinition interface {
 	ExportedFunctions() []WitFunction
 	Types() []WitType
 	String() string
+	ReferencesType(w WitType) bool
 }
 
 type WitWorldDefinitionImpl struct {
@@ -44,7 +45,16 @@ func (w *WitWorldDefinitionImpl) ExportedFunctions() []WitFunction {
 }
 
 func (w *WitWorldDefinitionImpl) Types() []WitType {
-	return w.Root.Types()
+	types := make([]WitType, 0)
+	for _, t := range w.Root.Types() {
+		for _, function := range w.ExportedFunctions() {
+			if function.ReferencesType(t) {
+				types = append(types, t)
+				break
+			}
+		}
+	}
+	return types
 }
 
 func (w *WitWorldDefinitionImpl) String() string {
@@ -54,4 +64,13 @@ func (w *WitWorldDefinitionImpl) String() string {
 	}
 	base += "\n}"
 	return base
+}
+
+func (w *WitWorldDefinitionImpl) ReferencesType(t WitType) bool {
+	for _, function := range w.ExportedFunctions() {
+		if function.ReferencesType(t) {
+			return true
+		}
+	}
+	return false
 }

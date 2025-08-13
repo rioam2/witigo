@@ -96,9 +96,6 @@ func GenerateFromWorld(w wit.WitWorldDefinition, packageName string) *generator.
 		if typeGen == nil {
 			continue
 		}
-		if !t.IsExported() {
-			continue
-		}
 		root = root.AddStatements(typeGen, generator.NewNewline())
 	}
 
