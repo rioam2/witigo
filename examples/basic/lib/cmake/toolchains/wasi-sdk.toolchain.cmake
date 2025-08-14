@@ -22,5 +22,5 @@ initialize_wasi_toolchain(
   WASM_TOOLS_TAG "v1.236.0" 
   WASI_SDK_TAG "wasi-sdk-27"
   TARGET_TRIPLET "wasm32-wasip1"
-  ENABLE_EXPERIMENTAL_STUBS OFF
+  ENABLE_EXPERIMENTAL_STUBS ON
 )

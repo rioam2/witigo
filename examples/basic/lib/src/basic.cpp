@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include "bindings/basic_example.c"
 #include "bindings/basic_example.h"
@@ -27,9 +28,11 @@ void exports_basic_example_tuple_func(basic_example_tuple2_string_u32_t* input,
 
 void exports_basic_example_list_func(basic_example_list_u64_t* input,
                                      basic_example_list_u64_t* ret) {
-  ret->len = input->len;
-  ret->ptr = (uint64_t*)realloc(ret->ptr, input->len * sizeof(uint64_t));
-  memcpy(ret->ptr, input->ptr, input->len * sizeof(uint64_t));
+  std::vector<uint64_t> transformed_list(input->ptr, input->ptr + input->len);
+  transformed_list.push_back(99);
+  ret->len = transformed_list.size();
+  ret->ptr = (uint64_t*)realloc(ret->ptr, ret->len * sizeof(ret->ptr[0]));
+  memcpy(ret->ptr, transformed_list.data(), ret->len * sizeof(ret->ptr[0]));
 }
 
 bool exports_basic_example_option_func(uint64_t* maybe_input, uint64_t* ret) {

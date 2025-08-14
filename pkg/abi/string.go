@@ -6,7 +6,7 @@ import (
 	"golang.org/x/text/encoding/unicode"
 )
 
-func ReadString(opts AbiOptions, ptr uint32) (string, error) {
+func ReadString(opts AbiOptions, ptr uint32) (result string, err error) {
 	strEncoding := opts.StringEncoding
 	strAlignment := strEncoding.Alignment()
 	taggedCodeUnitSize := strEncoding.CodeUnitSize()
@@ -47,12 +47,11 @@ func ReadString(opts AbiOptions, ptr uint32) (string, error) {
 	}
 }
 
-func WriteString(opts AbiOptions, str string) (uint32, uint32, uint32, error) {
+func WriteString(opts AbiOptions, str string) (ptr uint32, byteSize uint32, codeUnits uint32, err error) {
 	strEncoding := opts.StringEncoding
 	strAlignment := strEncoding.Alignment()
-	var codeUnits uint32 = uint32(len(str))
+	codeUnits = uint32(len(str))
 	var strData []byte
-	var err error
 	switch strEncoding {
 	case StringEncodingUTF8:
 		strData = []byte(str)
@@ -66,7 +65,7 @@ func WriteString(opts AbiOptions, str string) (uint32, uint32, uint32, error) {
 		return 0, 0, 0, fmt.Errorf("unsupported string encoding: %s", strEncoding)
 	}
 	strByteSize := len(strData)
-	ptr, _, err := Call(opts, "cabi_realloc", 0, 0, uint64(strAlignment), uint64(strByteSize))
+	ptr, _, err = Call(opts, "cabi_realloc", 0, 0, uint64(strAlignment), uint64(strByteSize))
 	if err != nil || ptr == 0 {
 		return 0, 0, 0, fmt.Errorf("failed to allocate memory for string: %w", err)
 	}
@@ -77,11 +76,11 @@ func WriteString(opts AbiOptions, str string) (uint32, uint32, uint32, error) {
 	return ptr, uint32(strByteSize), codeUnits, nil
 }
 
-func FreeString(opts AbiOptions, ptr uint32, size uint32) error {
+func FreeString(opts AbiOptions, ptr uint32, size uint32) (err error) {
 	if ptr == 0 || size == 0 {
 		return nil
 	}
-	_, _, err := Call(opts, "cabi_realloc", uint64(ptr), uint64(size), 0, 0)
+	_, _, err = Call(opts, "cabi_realloc", uint64(ptr), uint64(size), 0, 0)
 	if err != nil {
 		return fmt.Errorf("failed to free string memory at %d: %w", ptr, err)
 	}
