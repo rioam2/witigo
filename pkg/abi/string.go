@@ -6,44 +6,49 @@ import (
 	"golang.org/x/text/encoding/unicode"
 )
 
-func ReadString(opts AbiOptions, ptr uint32) (result string, err error) {
+func ReadString(opts AbiOptions, ptr uint32, result *string) (err error) {
+	if result == nil {
+		return fmt.Errorf("result pointer cannot be nil")
+	}
 	strEncoding := opts.StringEncoding
 	strAlignment := strEncoding.Alignment()
 	taggedCodeUnitSize := strEncoding.CodeUnitSize()
 	strPtr, ok := opts.Memory.ReadUint32Le(ptr)
 	if !ok {
-		return "", fmt.Errorf("failed to read string pointer at %d", ptr)
+		return fmt.Errorf("failed to read string pointer at %d", ptr)
 	}
 	taggedCodeUnits, ok := opts.Memory.ReadUint32Le(ptr + 4)
 	if !ok {
-		return "", fmt.Errorf("failed to read tagged code units at %d", ptr+4)
+		return fmt.Errorf("failed to read tagged code units at %d", ptr+4)
 	}
 	strByteLength := taggedCodeUnits * taggedCodeUnitSize
 	if strPtr == 0 {
-		return "", fmt.Errorf("invalid string pointer: %d", strPtr)
+		return fmt.Errorf("invalid string pointer: %d", strPtr)
 	}
 	if strPtr != AlignTo(strPtr, strAlignment) {
-		return "", fmt.Errorf("string pointer %d is not aligned to %d bytes", strPtr, strAlignment)
+		return fmt.Errorf("string pointer %d is not aligned to %d bytes", strPtr, strAlignment)
 	}
 	if strPtr+strByteLength > opts.Memory.Size() {
-		return "", fmt.Errorf("string pointer %d with length %d exceeds memory size %d", strPtr, strByteLength, opts.Memory.Size())
+		return fmt.Errorf("string pointer %d with length %d exceeds memory size %d", strPtr, strByteLength, opts.Memory.Size())
 	}
 	strData, ok := opts.Memory.Read(strPtr, strByteLength)
 	if !ok {
-		return "", fmt.Errorf("failed to read string data at %d with length %d", strPtr, strByteLength)
+		return fmt.Errorf("failed to read string data at %d with length %d", strPtr, strByteLength)
 	}
 	switch strEncoding {
 	case StringEncodingUTF8:
-		return string(strData), nil
+		*result = string(strData)
+		return nil
 	case StringEncodingUTF16:
 		decoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewDecoder()
 		str, err := decoder.String(string(strData))
 		if err != nil {
-			return "", err
+			return err
 		}
-		return str, nil
+		*result = str
+		return nil
 	default:
-		return "", fmt.Errorf("unsupported string encoding: %s", strEncoding)
+		return fmt.Errorf("unsupported string encoding: %s", strEncoding)
 	}
 }
 

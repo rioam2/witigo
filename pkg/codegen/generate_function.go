@@ -39,7 +39,7 @@ func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *
 			generator.NewRawStatementf("  panic(fmt.Errorf(\"failed to call %s: %%w\", err))", textcase.KebabCase(w.Name())),
 			generator.NewRawStatementf("}"),
 			generator.NewRawStatementf("defer postReturn()"),
-			generator.NewRawStatementf("result, err = abi.ReadString(i.abiOpts, ret)"),
+			generator.NewRawStatementf("err = abi.ReadString(i.abiOpts, ret, &result)"),
 			generator.NewRawStatementf("if err != nil {"),
 			generator.NewRawStatementf("  panic(fmt.Errorf(\"failed to read string result: %%w\", err))"),
 			generator.NewRawStatementf("}"),
