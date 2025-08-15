@@ -10,7 +10,7 @@ func Call(opts AbiOptions, name string, params ...uint64) (ret uint32, postRetur
 	}
 	results, err := opts.Call(opts.Context, name, params...)
 	if err != nil {
-		return 0, nil, fmt.Errorf("failed to call function %s: %w", name, err)
+		return 0, nil, fmt.Errorf("function call %s failed: %w", name, err)
 	}
 	if len(results) > 0 {
 		ret = uint32(results[0])

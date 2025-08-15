@@ -10,6 +10,7 @@ tasks:
   test:
     cmds:
       - go test ./test
+      - go test ./pkg/abi/test
   basic_example:
     cmds:
       - cd ./examples/basic/lib && cmake --workflow --preset wasi
