@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+// Call invokes the function specified by name in the provided WASM module with the given parameters.
+// It returns the result of the function call and a post-return function to handle memory cleanup.
 func Call(opts AbiOptions, name string, params ...uint64) (ret uint32, postReturn func() error, err error) {
 	if opts.Call == nil {
 		return 0, nil, fmt.Errorf("call function is not defined in AbiOptions")
