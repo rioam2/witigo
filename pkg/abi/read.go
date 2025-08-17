@@ -20,6 +20,10 @@ func Read(opts AbiOptions, ptr uint32, result any) error {
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return ReadInt(opts, ptr, result)
+	case reflect.Bool:
+		return ReadBool(opts, ptr, result)
+	case reflect.Float32, reflect.Float64:
+		return ReadFloat(opts, ptr, result)
 	case reflect.String:
 		return ReadString(opts, ptr, result)
 	case reflect.Slice:
