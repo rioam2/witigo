@@ -2,6 +2,7 @@ package abi
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -27,5 +28,27 @@ func ReadRecord(opts AbiOptions, ptr uint32, result any) error {
 	alignment := AlignmentOf(result)
 	ptr = AlignTo(ptr, alignment)
 
+	for i := 0; i < rv.NumField(); i++ {
+		field := rv.Field(i)
+		if !field.CanSet() {
+			return errors.New("field is not settable")
+		}
+		fieldType := field.Type()
+		fieldVal := reflect.New(fieldType).Interface()
+
+		fieldSize := SizeOf(field.Interface())
+		fieldAlignment := AlignmentOf(field.Interface())
+		fieldPtr := AlignTo(ptr, fieldAlignment)
+
+		err := Read(opts, fieldPtr, fieldVal)
+		if err != nil {
+			return fmt.Errorf("failed to read field %d at %d: %w", i, fieldPtr, err)
+		}
+
+		fieldRv := reflect.ValueOf(fieldVal).Elem()
+		field.Set(fieldRv)
+
+		ptr = fieldPtr + fieldSize
+	}
 	return nil
 }
