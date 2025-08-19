@@ -7,6 +7,14 @@ import (
 	"reflect"
 )
 
+// AbiFreeCallback is a returned function from write operations that can be used to free resources.
+type AbiFreeCallback func() error
+
+// AbiFreeCallbackNoop is a no-operation callback that does nothing.
+var AbiFreeCallbackNoop = func() error {
+	return nil
+}
+
 // Read reads a value from memory at the specified pointer into the result.
 func Read(opts AbiOptions, ptr uint32, result any) error {
 	// Validate input and retrieve element type of result
@@ -35,6 +43,42 @@ func Read(opts AbiOptions, ptr uint32, result any) error {
 			return ReadRecord(opts, ptr, result)
 		} else {
 			return fmt.Errorf("reading struct %s is not implemented", structName)
+		}
+	default:
+		return fmt.Errorf("unsupported kind: %s", rv.Kind())
+	}
+}
+
+// Write writes a value to memory at the specified pointer from the result.
+func Write(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return 0, AbiFreeCallbackNoop, errors.New("must pass a valid value")
+	}
+
+	// Write based on the kind of the value
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return WriteInt(opts, value, ptrHint)
+	case reflect.Bool:
+		return WriteBool(opts, value, ptrHint)
+	case reflect.Float32, reflect.Float64:
+		return WriteFloat(opts, value, ptrHint)
+	case reflect.String:
+		return WriteString(opts, value, ptrHint)
+	case reflect.Slice:
+		return WriteList(opts, value, ptrHint)
+	case reflect.Struct:
+		structName := rv.Type().Name()
+		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
+			return WriteRecord(opts, value, ptrHint)
+		} else {
+			return fmt.Errorf("writing struct %s is not implemented", structName)
 		}
 	default:
 		return fmt.Errorf("unsupported kind: %s", rv.Kind())

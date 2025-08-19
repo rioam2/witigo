@@ -62,3 +62,63 @@ func ReadList(opts AbiOptions, ptr uint32, result any) error {
 	rv.Set(newSlice)
 	return nil
 }
+
+func WriteList(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+	// // Validate input and retrieve element type of value
+	// rv := reflect.ValueOf(value)
+	// if rv.Kind() == reflect.Ptr {
+	// 	rv = rv.Elem()
+	// }
+	// if !rv.IsValid() || rv.Kind() != reflect.Slice {
+	// 	return 0, AbiFreeCallbackNoop, errors.New("must pass a valid slice pointer value")
+	// }
+
+	// // Extract the slice length and element type
+	// length := uint32(rv.Len())
+	// if length == 0 {
+	// 	return 0, AbiFreeCallbackNoop, nil // Empty slice, nothing to write
+	// }
+	// elemType := rv.Type().Elem()
+
+	// // Allocate memory for the list data if ptrHint is not provided or is zero
+	// elemSize := SizeOf(reflect.Zero(elemType).Interface())
+	// elemAlignment := AlignmentOf(reflect.Zero(elemType).Interface())
+
+	// if ptrHint != nil && *ptrHint != 0 {
+	// 	ptr = AlignTo(*ptrHint, elemAlignment)
+	// 	free = AbiFreeCallbackNoop
+	// } else {
+	// 	ptr, free, err = malloc(opts, length*elemSize, elemAlignment)
+	// 	if err != nil {
+	// 		return 0, free, fmt.Errorf("failed to allocate memory for list data: %w", err)
+	// 	}
+	// }
+
+	// // Write each element to memory
+	// for i := uint32(0); i < length; i++ {
+	// 	elemPtr := ptr + i*elemSize
+	// 	_, elemFree, err := Write(opts, rv.Index(int(i)).Interface(), &elemPtr)
+
+	// 	// Wrap free callback to handle element cleanup
+	// 	free = func() error {
+	// 		if err := free(); err != nil {
+	// 			return err
+	// 		}
+	// 		return elemFree()
+	// 	}
+
+	// 	if err != nil {
+	// 		return ptr, free, fmt.Errorf("failed to write element %d: %w", i, err)
+	// 	}
+	// }
+
+	// // Write the list header (data pointer and length)
+	// headerPtr := AlignTo(ptr, AlignmentOf(value))
+	// if !opts.Memory.WriteUint32Le(headerPtr, ptr) ||
+	// 	!opts.Memory.WriteUint32Le(headerPtr+4, uint32(length)) {
+	// 	free()
+	// 	return 0, AbiFreeCallbackNoop, fmt.Errorf("failed to write list header at %d", headerPtr)
+	// }
+
+	// return headerPtr, free, nil
+}

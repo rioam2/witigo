@@ -80,3 +80,84 @@ func ReadString(opts AbiOptions, ptr uint32, result any) error {
 		return fmt.Errorf("unsupported string encoding: %s", strEncoding)
 	}
 }
+
+func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return 0, AbiFreeCallbackNoop, errors.New("must pass a valid string pointer value")
+	}
+
+	// Validate that the value is a string type
+	if rv.Kind() != reflect.String {
+		return 0, AbiFreeCallbackNoop, fmt.Errorf("cannot write string from: %s", rv.Kind())
+	}
+
+	// Extract ABI properties of intrinsic type
+	size := SizeOf(value)
+	alignment := AlignmentOf(value)
+
+	// Allocate memory if ptrHint is not provided or is zero
+	if ptrHint != nil && *ptrHint != 0 {
+		ptr = AlignTo(*ptrHint, alignment)
+		free = AbiFreeCallbackNoop
+	} else {
+		ptr, free, err = malloc(opts, size, alignment)
+		if err != nil {
+			return 0, AbiFreeCallbackNoop, err
+		}
+	}
+
+	// Write string descriptor to linear memory
+	if ok := opts.Memory.WriteUint32Le(ptr, ptr); !ok {
+		return ptr, free, fmt.Errorf("failed to write string pointer at %d", ptr)
+	}
+	if ok := opts.Memory.WriteUint32Le(ptr+4, uint32(rv.Len())); !ok {
+		return ptr, free, fmt.Errorf("failed to write string length at %d", ptr+4)
+	}
+
+	// Get the byte representation of the string
+	strEncoding := opts.StringEncoding
+	strData := []byte(rv.String())
+	if strEncoding == StringEncodingUTF16 {
+		encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
+		var err error
+		strData, err = encoder.Bytes(strData)
+		if err != nil {
+			return ptr, free, fmt.Errorf("failed to encode string to UTF-16: %w", err)
+		}
+	}
+
+	// Get the alignment and size for the string data
+	strAlignment := strEncoding.Alignment()
+	taggedCodeUnitSize := strEncoding.CodeUnitSize()
+	strByteLength := uint32(len(strData))
+
+	if strByteLength%taggedCodeUnitSize != 0 {
+		return ptr, free, fmt.Errorf("string data length %d is not a multiple of tagged code unit size %d", strByteLength, taggedCodeUnitSize)
+	}
+
+	// Allocate memory for the string data
+	strDataPtr, strFree, err := malloc(opts, strByteLength, strAlignment)
+	if err != nil {
+		return ptr, free, err
+	}
+
+	// Callback to free both the string descriptor and the string data
+	freeBoth := func() error {
+		if err := free(); err != nil {
+			return err
+		}
+		return strFree()
+	}
+
+	// Write the string data to memory
+	if !opts.Memory.Write(strDataPtr, strData) {
+		return ptr, freeBoth, fmt.Errorf("failed to write string data at %d", strDataPtr)
+	}
+
+	return ptr, freeBoth, nil
+}

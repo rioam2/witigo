@@ -14,7 +14,7 @@ func ReadInt(opts AbiOptions, ptr uint32, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return errors.New("must pass a non-nil pointer result")
+		return errors.New("must pass a non-nil int/uint pointer result")
 	}
 	rv = rv.Elem()
 
@@ -52,6 +52,58 @@ func ReadInt(opts AbiOptions, ptr uint32, result any) error {
 	return nil
 }
 
+func WriteInt(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return 0, AbiFreeCallbackNoop, errors.New("must pass a valid int/uint pointer value")
+	}
+
+	// Validate that the value is an integer or unsigned integer type
+	if !rv.CanUint() && !rv.CanInt() {
+		return 0, AbiFreeCallbackNoop, fmt.Errorf("cannot write int/uint from: %s", rv.Kind())
+	}
+
+	// Extract ABI properties of intrinsic type
+	size := SizeOf(value)
+	alignment := AlignmentOf(value)
+
+	// Allocate memory if ptrHint is not provided or is zero
+	if ptrHint != nil && *ptrHint != 0 {
+		ptr = AlignTo(*ptrHint, alignment)
+		free = AbiFreeCallbackNoop
+	} else {
+		ptr, free, err = malloc(opts, size, alignment)
+		if err != nil {
+			return 0, AbiFreeCallbackNoop, err
+		}
+	}
+
+	// Prepare bytes to write
+	bytes := make([]byte, size)
+	if rv.CanUint() {
+		uint64Value := rv.Uint()
+		for i := uint32(0); i < size; i++ {
+			bytes[i] = byte(uint64Value >> (8 * i))
+		}
+	} else if rv.CanInt() {
+		int64Value := rv.Int()
+		for i := uint32(0); i < size; i++ {
+			bytes[i] = byte(int64Value >> (8 * i))
+		}
+	}
+
+	// Write bytes to memory
+	if !opts.Memory.Write(ptr, bytes) {
+		return ptr, free, fmt.Errorf("failed to write %d bytes at int/uint pointer %d", size, ptr)
+	}
+
+	return ptr, free, nil
+}
+
 func ReadBool(opts AbiOptions, ptr uint32, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
@@ -75,6 +127,50 @@ func ReadBool(opts AbiOptions, ptr uint32, result any) error {
 	rv.SetBool(bytes[0] != 0)
 
 	return nil
+}
+
+func WriteBool(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return 0, AbiFreeCallbackNoop, errors.New("must pass a valid boolean value")
+	}
+
+	// Validate that the value is a boolean type
+	if rv.Kind() != reflect.Bool {
+		return 0, AbiFreeCallbackNoop, fmt.Errorf("cannot write bool from: %s", rv.Kind())
+	}
+
+	// Extract ABI properties of intrinsic type
+	size := SizeOf(value)
+	alignment := AlignmentOf(value)
+
+	// Allocate memory if ptrHint is not provided or is zero
+	if ptrHint != nil && *ptrHint != 0 {
+		ptr = AlignTo(*ptrHint, alignment)
+		free = AbiFreeCallbackNoop
+	} else {
+		ptr, free, err = malloc(opts, size, alignment)
+		if err != nil {
+			return 0, AbiFreeCallbackNoop, err
+		}
+	}
+
+	// Prepare bytes to write
+	bytes := []byte{0}
+	if rv.Bool() {
+		bytes[0] = 1
+	}
+
+	// Write bytes to memory
+	if !opts.Memory.Write(ptr, bytes) {
+		return ptr, free, fmt.Errorf("failed to write %d bytes at boolean pointer %d", size, ptr)
+	}
+
+	return ptr, free, nil
 }
 
 var CANONICAL_FLOAT32_NAN = []byte{0x7f, 0xc0, 0x00, 0x00}
@@ -135,4 +231,50 @@ func ReadFloat(opts AbiOptions, ptr uint32, result any) error {
 	}
 
 	return nil
+}
+
+func WriteFloat(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return 0, AbiFreeCallbackNoop, errors.New("must pass a valid float value")
+	}
+
+	// Validate that the value is a float type
+	if rv.Kind() != reflect.Float32 && rv.Kind() != reflect.Float64 {
+		return 0, AbiFreeCallbackNoop, fmt.Errorf("cannot write float from: %s", rv.Kind())
+	}
+
+	// Extract ABI properties of intrinsic type
+	size := SizeOf(value)
+	alignment := AlignmentOf(value)
+
+	// Allocate memory if ptrHint is not provided or is zero
+	if ptrHint != nil && *ptrHint != 0 {
+		ptr = AlignTo(*ptrHint, alignment)
+		free = AbiFreeCallbackNoop
+	} else {
+		ptr, free, err = malloc(opts, size, alignment)
+		if err != nil {
+			return 0, AbiFreeCallbackNoop, err
+		}
+	}
+
+	// Prepare bytes to write
+	floatBytes := make([]byte, size)
+	if rv.Kind() == reflect.Float32 {
+		binary.LittleEndian.PutUint32(floatBytes, math.Float32bits(float32(rv.Float())))
+	} else if rv.Kind() == reflect.Float64 {
+		binary.LittleEndian.PutUint64(floatBytes, math.Float64bits(rv.Float()))
+	}
+
+	// Write bytes to memory
+	if !opts.Memory.Write(ptr, floatBytes) {
+		return ptr, free, fmt.Errorf("failed to write %d bytes at float pointer %d", size, ptr)
+	}
+
+	return ptr, free, nil
 }
