@@ -94,7 +94,7 @@ func WriteList(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Ab
 		ptr = AlignTo(*ptrHint, alignment)
 	} else {
 		var freeList AbiFreeCallback
-		ptr, freeList, err = malloc(opts, size, alignment)
+		ptr, freeList, err = abi_malloc(opts, size, alignment)
 		if err != nil {
 			return ptr, free, fmt.Errorf("failed to allocate memory for list: %w", err)
 		}
@@ -106,7 +106,7 @@ func WriteList(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Ab
 	elemType := rv.Type().Elem()
 	elemSize := SizeOf(reflect.Zero(elemType).Interface())
 	elemAlignment := AlignmentOf(reflect.Zero(elemType).Interface())
-	listDataPtr, listDataFree, err := malloc(opts, elemSize*listLength, elemAlignment)
+	listDataPtr, listDataFree, err := abi_malloc(opts, elemSize*listLength, elemAlignment)
 	if err != nil {
 		return ptr, free, fmt.Errorf("failed to allocate memory for list data: %w", err)
 	}

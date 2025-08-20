@@ -87,7 +87,7 @@ func WriteRecord(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 		ptr = AlignTo(*ptrHint, alignment)
 	} else {
 		var freeRecord AbiFreeCallback
-		ptr, freeRecord, err = malloc(opts, size, alignment)
+		ptr, freeRecord, err = abi_malloc(opts, size, alignment)
 		if err != nil {
 			return ptr, free, err
 		}

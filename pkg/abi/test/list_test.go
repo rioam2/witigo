@@ -38,10 +38,7 @@ func TestReadListString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := abi.AbiOptions{
-				StringEncoding: abi.StringEncodingUTF8,
-				Memory:         createMemoryFromMap(tt.memory),
-			}
+			opts := createAbiOptionsFromMemoryMap(tt.memory)
 			var result []string
 			err := abi.Read(opts, tt.ptr, &result)
 			if tt.shouldError {
@@ -194,10 +191,7 @@ func TestReadListOfListStrings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := abi.AbiOptions{
-				StringEncoding: abi.StringEncodingUTF8,
-				Memory:         createMemoryFromMap(tt.memory),
-			}
+			opts := createAbiOptionsFromMemoryMap(tt.memory)
 			var result [][]string
 			err := abi.Read(opts, tt.ptr, &result)
 

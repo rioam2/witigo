@@ -87,13 +87,8 @@ func TestReadString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mem := createMemoryFromMap(tt.memoryMap)
-
-			opts := abi.AbiOptions{
-				Memory:         mem,
-				StringEncoding: tt.encoding,
-			}
-
+			opts := createAbiOptionsFromMemoryMap(tt.memoryMap)
+			opts.StringEncoding = tt.encoding
 			var result string
 			err := abi.Read(opts, tt.ptr, &result)
 
@@ -108,8 +103,7 @@ func TestReadString(t *testing.T) {
 }
 
 func TestReadString_InvalidArgs(t *testing.T) {
-	mem := createMemoryFromMap(nil) // Empty memory
-	opts := abi.AbiOptions{Memory: mem, StringEncoding: abi.StringEncodingUTF8}
+	opts := createAbiOptionsFromMemoryMap(nil) // Empty memory
 
 	t.Run("nil pointer", func(t *testing.T) {
 		err := abi.Read(opts, 0, nil)
@@ -125,6 +119,86 @@ func TestReadString_InvalidArgs(t *testing.T) {
 	t.Run("wrong pointer type", func(t *testing.T) {
 		var num int
 		err := abi.Read(opts, 0, &num)
+		assert.Error(t, err)
+	})
+}
+func TestWriteString(t *testing.T) {
+	tests := []struct {
+		name        string
+		inputString string
+		encoding    abi.StringEncoding
+		expectError bool
+	}{
+		{
+			name:        "write UTF8 string",
+			inputString: "hello",
+			encoding:    abi.StringEncodingUTF8,
+			expectError: false,
+		},
+		{
+			name:        "write UTF8 string (longer)",
+			inputString: "lorem ipsum dolor sit amet",
+			encoding:    abi.StringEncodingUTF8,
+			expectError: false,
+		},
+		{
+			name:        "write UTF16 string",
+			inputString: "hello",
+			encoding:    abi.StringEncodingUTF16,
+			expectError: false,
+		},
+		{
+			name:        "write empty string",
+			inputString: "",
+			encoding:    abi.StringEncodingUTF8,
+			expectError: false,
+		},
+		{
+			name:        "unsupported encoding",
+			inputString: "hello",
+			encoding:    abi.StringEncoding("unsupported"),
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := createAbiOptionsFromMemoryMap(nil)
+			opts.StringEncoding = tt.encoding
+
+			ptr, free, err := abi.WriteString(opts, tt.inputString, nil)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				defer func() { require.NoError(t, free()) }()
+			}
+
+			var result string
+			err = abi.Read(opts, ptr, &result)
+
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				defer func() { require.NoError(t, free()) }()
+				assert.Equal(t, tt.inputString, result)
+			}
+		})
+	}
+}
+
+func TestWriteString_InvalidArgs(t *testing.T) {
+	opts := createAbiOptionsFromMemoryMap(nil) // Empty memory
+
+	t.Run("non-string value", func(t *testing.T) {
+		_, _, err := abi.WriteString(opts, 123, nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("nil options", func(t *testing.T) {
+		var opts abi.AbiOptions
+		_, _, err := abi.WriteString(opts, "hello", nil)
 		assert.Error(t, err)
 	})
 }

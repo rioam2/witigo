@@ -25,17 +25,20 @@ func Call(opts AbiOptions, name string, params ...uint64) (ret uint32, postRetur
 }
 
 // realloc reallocates memory at the specified pointer with the given size and alignment.
-func realloc(opts AbiOptions, oldPtr uint32, oldSize uint32, alignment uint32, newSize uint32) (ptr uint32, free AbiFreeCallback, err error) {
+func abi_realloc(opts AbiOptions, oldPtr uint32, oldSize uint32, alignment uint32, newSize uint32) (ptr uint32, free AbiFreeCallback, err error) {
 	return Call(opts, "cabi_realloc", uint64(oldPtr), uint64(oldSize), uint64(alignment), uint64(newSize))
 }
 
 // free releases memory at the specified pointer.
-func free(opts AbiOptions, ptr uint32) error {
-	_, _, err := realloc(opts, ptr, 0, 0, 0)
+func abi_free(opts AbiOptions, ptr uint32) error {
+	_, _, err := abi_realloc(opts, ptr, 0, 0, 0)
 	return err
 }
 
-// malloc allocates memory of the specified size and alignment.
-func malloc(opts AbiOptions, size uint32, alignment uint32) (ptr uint32, free AbiFreeCallback, err error) {
-	return realloc(opts, 0, 0, alignment, size)
+// abi_malloc allocates memory of the specified size and alignment.
+func abi_malloc(opts AbiOptions, size uint32, alignment uint32) (ptr uint32, free AbiFreeCallback, err error) {
+	ptr, _, err = abi_realloc(opts, 0, 0, alignment, size)
+	return ptr, func() error {
+		return abi_free(opts, ptr)
+	}, err
 }

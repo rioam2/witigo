@@ -88,7 +88,7 @@ func WriteInt(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Abi
 		ptr = AlignTo(*ptrHint, alignment)
 	} else {
 		var freeInt AbiFreeCallback
-		ptr, freeInt, err = malloc(opts, size, alignment)
+		ptr, freeInt, err = abi_malloc(opts, size, alignment)
 		if err != nil {
 			return ptr, free, err
 		}
@@ -178,7 +178,7 @@ func WriteBool(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Ab
 		ptr = AlignTo(*ptrHint, alignment)
 	} else {
 		var freeBool AbiFreeCallback
-		ptr, freeBool, err = malloc(opts, size, alignment)
+		ptr, freeBool, err = abi_malloc(opts, size, alignment)
 		if err != nil {
 			return ptr, free, err
 		}
@@ -295,7 +295,7 @@ func WriteFloat(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free A
 		ptr = AlignTo(*ptrHint, alignment)
 	} else {
 		var freeFloat AbiFreeCallback
-		ptr, freeFloat, err = malloc(opts, size, alignment)
+		ptr, freeFloat, err = abi_malloc(opts, size, alignment)
 		if err != nil {
 			return ptr, free, err
 		}

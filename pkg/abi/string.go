@@ -117,31 +117,28 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 		ptr = AlignTo(*ptrHint, alignment)
 	} else {
 		var freeString AbiFreeCallback
-		ptr, freeString, err = malloc(opts, size, alignment)
+		ptr, freeString, err = abi_malloc(opts, size, alignment)
 		if err != nil {
 			return ptr, free, err
 		}
 		freeCallbacks = append(freeCallbacks, freeString)
 	}
 
-	// Write string descriptor to linear memory
-	if ok := opts.Memory.WriteUint32Le(ptr, ptr); !ok {
-		return ptr, free, fmt.Errorf("failed to write string pointer at %d", ptr)
-	}
-	if ok := opts.Memory.WriteUint32Le(ptr+4, uint32(rv.Len())); !ok {
-		return ptr, free, fmt.Errorf("failed to write string length at %d", ptr+4)
-	}
-
 	// Get the byte representation of the string
 	strEncoding := opts.StringEncoding
-	strData := []byte(rv.String())
-	if strEncoding == StringEncodingUTF16 {
+	var strData []byte
+
+	switch strEncoding {
+	case StringEncodingUTF8:
+		strData = []byte(rv.String())
+	case StringEncodingUTF16:
 		encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
-		var err error
-		strData, err = encoder.Bytes(strData)
+		strData, err = encoder.Bytes([]byte(rv.String()))
 		if err != nil {
 			return ptr, free, fmt.Errorf("failed to encode string to UTF-16: %w", err)
 		}
+	default:
+		return ptr, free, fmt.Errorf("unsupported string encoding: %s", strEncoding)
 	}
 
 	// Get the alignment and size for the string data
@@ -154,11 +151,19 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 	}
 
 	// Allocate memory for the string data
-	strDataPtr, strFree, err := malloc(opts, strByteLength, strAlignment)
+	strDataPtr, strFree, err := abi_malloc(opts, strByteLength, strAlignment)
 	if err != nil {
 		return ptr, free, err
 	}
 	freeCallbacks = append(freeCallbacks, strFree)
+
+	// Write string descriptor to linear memory
+	if ok := opts.Memory.WriteUint32Le(ptr, strDataPtr); !ok {
+		return ptr, free, fmt.Errorf("failed to write string data pointer at %d", ptr)
+	}
+	if ok := opts.Memory.WriteUint32Le(ptr+4, uint32(rv.Len())); !ok {
+		return ptr, free, fmt.Errorf("failed to write string length at %d", ptr+4)
+	}
 
 	// Write the string data to memory
 	if !opts.Memory.Write(strDataPtr, strData) {

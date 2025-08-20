@@ -111,8 +111,7 @@ func TestReadInt(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			memory := createMemoryFromMap(tc.memoryData)
-			opts := abi.AbiOptions{Memory: memory}
+			opts := createAbiOptionsFromMemoryMap(tc.memoryData)
 
 			switch tc.valueType {
 			case "int8":
@@ -193,8 +192,7 @@ func TestReadInt(t *testing.T) {
 
 	// Test nil pointer case
 	t.Run("nil result pointer", func(t *testing.T) {
-		memory := createMemoryFromMap(map[uint32][]byte{0x100: {0x01}})
-		opts := abi.AbiOptions{Memory: memory}
+		opts := createAbiOptionsFromMemoryMap(map[uint32][]byte{0x100: {0x01}})
 		err := abi.Read(opts, 0x100, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "must pass a non-nil pointer result")
@@ -245,8 +243,7 @@ func TestReadBool(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			memory := createMemoryFromMap(tc.memoryData)
-			opts := abi.AbiOptions{Memory: memory}
+			opts := createAbiOptionsFromMemoryMap(tc.memoryData)
 
 			var result bool
 			err := abi.Read(opts, tc.ptr, &result)
@@ -261,8 +258,7 @@ func TestReadBool(t *testing.T) {
 
 	// Test nil pointer case
 	t.Run("nil result pointer", func(t *testing.T) {
-		memory := createMemoryFromMap(map[uint32][]byte{0x100: {0x01}})
-		opts := abi.AbiOptions{Memory: memory}
+		opts := createAbiOptionsFromMemoryMap(map[uint32][]byte{0x100: {0x01}})
 		err := abi.Read(opts, 0x100, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "must pass a non-nil pointer result")
@@ -354,8 +350,7 @@ func TestReadFloat(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			memory := createMemoryFromMap(tc.memoryData)
-			opts := abi.AbiOptions{Memory: memory}
+			opts := createAbiOptionsFromMemoryMap(tc.memoryData)
 
 			switch tc.valueType {
 			case "float32":
@@ -390,8 +385,7 @@ func TestReadFloat(t *testing.T) {
 
 	// Test nil pointer case
 	t.Run("nil result pointer", func(t *testing.T) {
-		memory := createMemoryFromMap(map[uint32][]byte{0x100: {0x00, 0x00, 0x80, 0x3F}})
-		opts := abi.AbiOptions{Memory: memory}
+		opts := createAbiOptionsFromMemoryMap(map[uint32][]byte{0x100: {0x00, 0x00, 0x80, 0x3F}})
 		err := abi.Read(opts, 0x100, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "must pass a non-nil pointer result")

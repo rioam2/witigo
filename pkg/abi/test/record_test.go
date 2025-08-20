@@ -1,7 +1,6 @@
 package test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/rioam2/witigo/pkg/abi"
@@ -24,8 +23,7 @@ func TestRead_ComplexStruct(t *testing.T) {
 		0x14: {5, 0, 0, 0},              // Message field: String length
 		0x18: []byte("world"),
 	}
-	memory := createMemoryFromMap(data)
-	opts := abi.AbiOptions{Memory: memory, StringEncoding: abi.StringEncodingUTF8}
+	opts := createAbiOptionsFromMemoryMap(data)
 	record := &ComplexRecord{}
 	err := abi.Read(opts, 0x00, record)
 
@@ -54,8 +52,7 @@ func TestRead_NestedStruct(t *testing.T) {
 		0x0C: {4, 0, 0, 0},    // Details.City field: String length
 		0x10: []byte("Rome"),
 	}
-	memory := createMemoryFromMap(data)
-	opts := abi.AbiOptions{Memory: memory, StringEncoding: abi.StringEncodingUTF8}
+	opts := createAbiOptionsFromMemoryMap(data)
 	record := &NestedRecord{}
 	err := abi.Read(opts, 0x00, record)
 
@@ -94,8 +91,7 @@ func TestRead_StructWithPadding(t *testing.T) {
 		0x00: {1, 0, 0, 0}, // ID field
 		0x04: {1},          // Flag field
 	}
-	memory := createMemoryFromMap(data)
-	opts := abi.AbiOptions{Memory: memory, StringEncoding: abi.StringEncodingUTF8}
+	opts := createAbiOptionsFromMemoryMap(data)
 	record := &PaddedRecord{}
 	err := abi.Read(opts, 0x00, record)
 
@@ -110,21 +106,7 @@ func TestWriteThenRead_StructWithPadding(t *testing.T) {
 		Flag bool
 	}
 
-	allocPtr := uint64(0x40)
-	call := func(ctx context.Context, name string, params ...uint64) ([]uint64, error) {
-		if name != "malloc" {
-			allocPtr += 0x10
-			return []uint64{allocPtr}, nil
-		}
-		return []uint64{0}, nil
-	}
-
-	data := map[uint32][]byte{
-		0x100: {0x00}, // Placeholder to create 0x100 of addressable memory space
-	}
-
-	memory := createMemoryFromMap(data)
-	opts := abi.AbiOptions{Memory: memory, StringEncoding: abi.StringEncodingUTF8, Call: call}
+	opts := createAbiOptionsFromMemoryMap(nil)
 	record := &PaddedRecord{ID: 42, Flag: true}
 
 	ptr, free, err := abi.Write(opts, record, nil)
