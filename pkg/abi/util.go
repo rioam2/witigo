@@ -57,7 +57,7 @@ func Write(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFre
 		rv = rv.Elem()
 	}
 	if !rv.IsValid() {
-		return 0, AbiFreeCallbackNoop, errors.New("must pass a valid value")
+		return ptr, free, errors.New("must pass a valid value")
 	}
 
 	// Write based on the kind of the value
@@ -78,10 +78,10 @@ func Write(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFre
 		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
 			return WriteRecord(opts, value, ptrHint)
 		} else {
-			return fmt.Errorf("writing struct %s is not implemented", structName)
+			return 0, AbiFreeCallbackNoop, fmt.Errorf("writing struct %s is not implemented", structName)
 		}
 	default:
-		return fmt.Errorf("unsupported kind: %s", rv.Kind())
+		return 0, AbiFreeCallbackNoop, fmt.Errorf("unsupported kind: %s", rv.Kind())
 	}
 }
 

@@ -64,61 +64,73 @@ func ReadList(opts AbiOptions, ptr uint32, result any) error {
 }
 
 func WriteList(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
-	// // Validate input and retrieve element type of value
-	// rv := reflect.ValueOf(value)
-	// if rv.Kind() == reflect.Ptr {
-	// 	rv = rv.Elem()
-	// }
-	// if !rv.IsValid() || rv.Kind() != reflect.Slice {
-	// 	return 0, AbiFreeCallbackNoop, errors.New("must pass a valid slice pointer value")
-	// }
+	// Initialize return values
+	ptr = 0
+	freeCallbacks := []AbiFreeCallback{}
+	free = func() error {
+		for _, cb := range freeCallbacks {
+			if err := cb(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 
-	// // Extract the slice length and element type
-	// length := uint32(rv.Len())
-	// if length == 0 {
-	// 	return 0, AbiFreeCallbackNoop, nil // Empty slice, nothing to write
-	// }
-	// elemType := rv.Type().Elem()
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() || rv.Kind() != reflect.Slice {
+		return ptr, free, errors.New("must pass a valid slice pointer value")
+	}
 
-	// // Allocate memory for the list data if ptrHint is not provided or is zero
-	// elemSize := SizeOf(reflect.Zero(elemType).Interface())
-	// elemAlignment := AlignmentOf(reflect.Zero(elemType).Interface())
+	// Extract ABI properties of intrinsic type
+	size := SizeOf(value)
+	alignment := AlignmentOf(value)
 
-	// if ptrHint != nil && *ptrHint != 0 {
-	// 	ptr = AlignTo(*ptrHint, elemAlignment)
-	// 	free = AbiFreeCallbackNoop
-	// } else {
-	// 	ptr, free, err = malloc(opts, length*elemSize, elemAlignment)
-	// 	if err != nil {
-	// 		return 0, free, fmt.Errorf("failed to allocate memory for list data: %w", err)
-	// 	}
-	// }
+	// Allocate memory if ptrHint is not provided or is zero
+	if ptrHint != nil && *ptrHint != 0 {
+		ptr = AlignTo(*ptrHint, alignment)
+	} else {
+		var freeList AbiFreeCallback
+		ptr, freeList, err = malloc(opts, size, alignment)
+		if err != nil {
+			return ptr, free, fmt.Errorf("failed to allocate memory for list: %w", err)
+		}
+		freeCallbacks = append(freeCallbacks, freeList)
+	}
 
-	// // Write each element to memory
-	// for i := uint32(0); i < length; i++ {
-	// 	elemPtr := ptr + i*elemSize
-	// 	_, elemFree, err := Write(opts, rv.Index(int(i)).Interface(), &elemPtr)
+	// Allocate memory for the list data
+	listLength := uint32(rv.Len())
+	elemType := rv.Type().Elem()
+	elemSize := SizeOf(reflect.Zero(elemType).Interface())
+	elemAlignment := AlignmentOf(reflect.Zero(elemType).Interface())
+	listDataPtr, listDataFree, err := malloc(opts, elemSize*listLength, elemAlignment)
+	if err != nil {
+		return ptr, free, fmt.Errorf("failed to allocate memory for list data: %w", err)
+	}
+	freeCallbacks = append(freeCallbacks, listDataFree)
 
-	// 	// Wrap free callback to handle element cleanup
-	// 	free = func() error {
-	// 		if err := free(); err != nil {
-	// 			return err
-	// 		}
-	// 		return elemFree()
-	// 	}
+	// Write list header (data pointer and length)
+	if !opts.Memory.WriteUint32Le(ptr, listDataPtr) {
+		return ptr, free, fmt.Errorf("failed to write list data pointer at %d", ptr)
+	}
 
-	// 	if err != nil {
-	// 		return ptr, free, fmt.Errorf("failed to write element %d: %w", i, err)
-	// 	}
-	// }
+	if !opts.Memory.WriteUint32Le(ptr+4, listLength) {
+		return ptr, free, fmt.Errorf("failed to write list length at %d", ptr+4)
+	}
 
-	// // Write the list header (data pointer and length)
-	// headerPtr := AlignTo(ptr, AlignmentOf(value))
-	// if !opts.Memory.WriteUint32Le(headerPtr, ptr) ||
-	// 	!opts.Memory.WriteUint32Le(headerPtr+4, uint32(length)) {
-	// 	free()
-	// 	return 0, AbiFreeCallbackNoop, fmt.Errorf("failed to write list header at %d", headerPtr)
-	// }
+	// Write each element to memory
+	for i := uint32(0); i < listLength; i++ {
+		elemPtr := ptr + i*elemSize
+		_, elemFree, err := Write(opts, rv.Index(int(i)).Interface(), &elemPtr)
+		freeCallbacks = append(freeCallbacks, elemFree)
 
-	// return headerPtr, free, nil
+		if err != nil {
+			return ptr, free, fmt.Errorf("failed to write element %d: %w", i, err)
+		}
+	}
+
+	return ptr, free, nil
 }

@@ -82,18 +82,30 @@ func ReadString(opts AbiOptions, ptr uint32, result any) error {
 }
 
 func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+	// Initialize return values
+	ptr = 0
+	freeCallbacks := []AbiFreeCallback{AbiFreeCallbackNoop}
+	free = func() error {
+		for _, cb := range freeCallbacks {
+			if err := cb(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	// Validate input and retrieve element type of value
 	rv := reflect.ValueOf(value)
 	if rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
 	}
 	if !rv.IsValid() {
-		return 0, AbiFreeCallbackNoop, errors.New("must pass a valid string pointer value")
+		return ptr, free, errors.New("must pass a valid string pointer value")
 	}
 
 	// Validate that the value is a string type
 	if rv.Kind() != reflect.String {
-		return 0, AbiFreeCallbackNoop, fmt.Errorf("cannot write string from: %s", rv.Kind())
+		return ptr, free, fmt.Errorf("cannot write string from: %s", rv.Kind())
 	}
 
 	// Extract ABI properties of intrinsic type
@@ -103,12 +115,13 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 	// Allocate memory if ptrHint is not provided or is zero
 	if ptrHint != nil && *ptrHint != 0 {
 		ptr = AlignTo(*ptrHint, alignment)
-		free = AbiFreeCallbackNoop
 	} else {
-		ptr, free, err = malloc(opts, size, alignment)
+		var freeString AbiFreeCallback
+		ptr, freeString, err = malloc(opts, size, alignment)
 		if err != nil {
-			return 0, AbiFreeCallbackNoop, err
+			return ptr, free, err
 		}
+		freeCallbacks = append(freeCallbacks, freeString)
 	}
 
 	// Write string descriptor to linear memory
@@ -145,19 +158,12 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 	if err != nil {
 		return ptr, free, err
 	}
-
-	// Callback to free both the string descriptor and the string data
-	freeBoth := func() error {
-		if err := free(); err != nil {
-			return err
-		}
-		return strFree()
-	}
+	freeCallbacks = append(freeCallbacks, strFree)
 
 	// Write the string data to memory
 	if !opts.Memory.Write(strDataPtr, strData) {
-		return ptr, freeBoth, fmt.Errorf("failed to write string data at %d", strDataPtr)
+		return ptr, free, fmt.Errorf("failed to write string data at %d", strDataPtr)
 	}
 
-	return ptr, freeBoth, nil
+	return ptr, free, nil
 }

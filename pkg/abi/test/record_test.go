@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/rioam2/witigo/pkg/abi"
@@ -101,4 +102,39 @@ func TestRead_StructWithPadding(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int32(1), record.ID)
 	assert.Equal(t, true, record.Flag)
+}
+
+func TestWriteThenRead_StructWithPadding(t *testing.T) {
+	type PaddedRecord struct {
+		ID   int32
+		Flag bool
+	}
+
+	allocPtr := uint64(0x40)
+	call := func(ctx context.Context, name string, params ...uint64) ([]uint64, error) {
+		if name != "malloc" {
+			allocPtr += 0x10
+			return []uint64{allocPtr}, nil
+		}
+		return []uint64{0}, nil
+	}
+
+	data := map[uint32][]byte{
+		0x100: {0x00}, // Placeholder to create 0x100 of addressable memory space
+	}
+
+	memory := createMemoryFromMap(data)
+	opts := abi.AbiOptions{Memory: memory, StringEncoding: abi.StringEncodingUTF8, Call: call}
+	record := &PaddedRecord{ID: 42, Flag: true}
+
+	ptr, free, err := abi.Write(opts, record, nil)
+	assert.NoError(t, err)
+	defer free()
+
+	readRecord := &PaddedRecord{}
+	err = abi.Read(opts, ptr, readRecord)
+	assert.NoError(t, err)
+
+	assert.Equal(t, int32(42), readRecord.ID)
+	assert.Equal(t, true, readRecord.Flag)
 }
