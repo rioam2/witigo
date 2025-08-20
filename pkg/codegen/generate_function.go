@@ -18,12 +18,14 @@ func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *
 		switch param.Type().Kind() {
 		case witigo.AbiTypeString:
 			fn = fn.AddStatements(
-				generator.NewRawStatementf("arg%02dPtr, arg%02dSize, arg%02dUnits, err := abi.WriteString(i.abiOpts, %s)", idx, idx, idx, textcase.CamelCase(param.Name())),
+				generator.NewRawStatementf("arg%02dPtr, arg%02dFree, err := abi.Write(i.abiOpts, %s, nil)", idx, idx, textcase.CamelCase(param.Name())),
+				generator.NewRawStatementf("defer arg%02dFree()", idx),
 				generator.NewRawStatementf("if err != nil {"),
-				generator.NewRawStatementf("  panic(fmt.Errorf(\"failed to write string: %%w\", err))"),
+				generator.NewRawStatementf("  return \"\", fmt.Errorf(\"failed to write string: %%w\", err)"),
 				generator.NewRawStatementf("}"),
-				generator.NewRawStatementf("defer abi.FreeString(i.abiOpts, arg%02dPtr, arg%02dSize)", idx, idx),
-				generator.NewRawStatementf("args = append(args, uint64(arg%02dPtr), uint64(arg%02dUnits))", idx, idx),
+				generator.NewRawStatementf("arg%02dStringDataPtr, _ := i.memory.ReadUint32Le(arg%02dPtr)", idx, idx),
+				generator.NewRawStatementf("arg%02dStringLength, _ := i.memory.ReadUint32Le(arg%02dPtr + 4)", idx, idx),
+				generator.NewRawStatementf("args = append(args, uint64(arg%02dStringDataPtr), uint64(arg%02dStringLength))", idx, idx),
 			)
 		default:
 			fn = fn.AddStatements(
@@ -45,7 +47,7 @@ func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *
 			generator.NewRawStatementf("}"),
 		)
 	}
-	fn = fn.AddStatements(generator.NewRawStatement("return result"))
+	fn = fn.AddStatements(generator.NewRawStatement("return result, nil"))
 	return fn
 }
 
@@ -59,5 +61,5 @@ func GenerateSignatureFromFunction(w wit.WitFunction) *generator.FuncSignature {
 	}
 	return generator.NewFuncSignature(textcase.PascalCase(w.Name())).
 		AddParameters(parameters...).
-		AddReturnTypes(GenerateTypenameFromType(w.Returns()))
+		AddReturnTypes(GenerateTypenameFromType(w.Returns()), "error")
 }
