@@ -85,6 +85,42 @@ func Write(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFre
 	}
 }
 
+// WriteParameter writes a parameter value to memory and returns the arguments for the ABI call.
+func WriteParameter(opts AbiOptions, value any, ptrHint *uint32) (args []uint32, free AbiFreeCallback, err error) {
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return nil, free, errors.New("must pass a valid value")
+	}
+
+	// Write based on the kind of the value
+	switch rv.Kind() {
+	// case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+	// 	reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	// 	return WriteParameterInt(opts, value, ptrHint)
+	// case reflect.Bool:
+	// 	return WriteParameterBool(opts, value, ptrHint)
+	// case reflect.Float32, reflect.Float64:
+	// 	return WriteParameterFloat(opts, value, ptrHint)
+	case reflect.String:
+		return WriteParameterString(opts, value, ptrHint)
+	// case reflect.Slice:
+	// 	return WriteParameterList(opts, value, ptrHint)
+	// case reflect.Struct:
+	// 	structName := rv.Type().Name()
+	// 	if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
+	// 		return WriteParameterRecord(opts, value, ptrHint)
+	// 	} else {
+	// 		return nil, AbiFreeCallbackNoop, fmt.Errorf("writing struct %s is not implemented", structName)
+	// 	}
+	default:
+		return nil, AbiFreeCallbackNoop, fmt.Errorf("unsupported kind: %s", rv.Kind())
+	}
+}
+
 // AlignTo aligns a pointer to the nearest multiple of the specified alignment.
 func AlignTo(ptr uint32, alignment uint32) uint32 {
 	if alignment <= 0 {
@@ -161,5 +197,16 @@ func AlignmentOf(value any) uint32 {
 		}
 	default:
 		panic("unsupported type for AlignmentOf: " + rv.Kind().String())
+	}
+}
+
+func wrapFreeCallbacks(freeCallbacks *[]AbiFreeCallback) AbiFreeCallback {
+	return func() error {
+		for _, cb := range *freeCallbacks {
+			if err := cb(); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 }

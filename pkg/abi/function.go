@@ -6,7 +6,7 @@ import (
 
 // Call invokes the function specified by name in the provided WASM module with the given parameters.
 // It returns the result of the function call and a post-return function to handle memory cleanup.
-func Call(opts AbiOptions, name string, params ...uint64) (ret uint32, postReturn AbiFreeCallback, err error) {
+func Call(opts AbiOptions, name string, params ...uint32) (ret uint32, postReturn AbiFreeCallback, err error) {
 	if opts.Call == nil {
 		return 0, AbiFreeCallbackNoop, fmt.Errorf("call function is not defined in AbiOptions")
 	}
@@ -18,7 +18,7 @@ func Call(opts AbiOptions, name string, params ...uint64) (ret uint32, postRetur
 		ret = uint32(results[0])
 	}
 	postReturn = func() error {
-		_, err := opts.Call(opts.Context, "cabi_post_"+name, uint64(ret))
+		_, err := opts.Call(opts.Context, "cabi_post_"+name, ret)
 		return err
 	}
 	return ret, postReturn, err
@@ -26,7 +26,7 @@ func Call(opts AbiOptions, name string, params ...uint64) (ret uint32, postRetur
 
 // realloc reallocates memory at the specified pointer with the given size and alignment.
 func abi_realloc(opts AbiOptions, oldPtr uint32, oldSize uint32, alignment uint32, newSize uint32) (ptr uint32, free AbiFreeCallback, err error) {
-	return Call(opts, "cabi_realloc", uint64(oldPtr), uint64(oldSize), uint64(alignment), uint64(newSize))
+	return Call(opts, "cabi_realloc", oldPtr, oldSize, alignment, newSize)
 }
 
 // free releases memory at the specified pointer.

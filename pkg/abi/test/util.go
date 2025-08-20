@@ -71,14 +71,14 @@ func createMemoryFromMap(data map[uint32][]byte) abi.RuntimeMemory {
 }
 
 func createAbiOptionsFromMemoryMap(data map[uint32][]byte) abi.AbiOptions {
-	allocPtr := uint64(0x10000)
-	allocIncr := uint64(0x1000)
-	call := func(ctx context.Context, name string, params ...uint64) ([]uint64, error) {
+	allocPtr := uint32(0x10000)
+	allocIncr := uint32(0x1000)
+	call := func(ctx context.Context, name string, params ...uint32) ([]uint32, error) {
 		if name == "cabi_realloc" {
 			allocPtr += allocIncr
-			return []uint64{allocPtr}, nil
+			return []uint32{allocPtr}, nil
 		}
-		return []uint64{0}, nil
+		return []uint32{0}, nil
 	}
 
 	mem := createMemoryFromMap(data)

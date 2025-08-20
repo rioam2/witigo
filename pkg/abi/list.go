@@ -67,14 +67,7 @@ func WriteList(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Ab
 	// Initialize return values
 	ptr = 0
 	freeCallbacks := []AbiFreeCallback{}
-	free = func() error {
-		for _, cb := range freeCallbacks {
-			if err := cb(); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
+	free = wrapFreeCallbacks(&freeCallbacks)
 
 	// Validate input and retrieve element type of value
 	rv := reflect.ValueOf(value)

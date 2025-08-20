@@ -84,15 +84,8 @@ func ReadString(opts AbiOptions, ptr uint32, result any) error {
 func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
 	// Initialize return values
 	ptr = 0
-	freeCallbacks := []AbiFreeCallback{AbiFreeCallbackNoop}
-	free = func() error {
-		for _, cb := range freeCallbacks {
-			if err := cb(); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
+	freeCallbacks := []AbiFreeCallback{}
+	free = wrapFreeCallbacks(&freeCallbacks)
 
 	// Validate input and retrieve element type of value
 	rv := reflect.ValueOf(value)
@@ -124,6 +117,44 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 		freeCallbacks = append(freeCallbacks, freeString)
 	}
 
+	params, strFree, err := WriteParameterString(opts, value, &ptr)
+	freeCallbacks = append(freeCallbacks, strFree)
+	if err != nil {
+		return ptr, free, err
+	}
+	strDataPtr := params[0]
+	strDataLen := params[1]
+
+	// Write string descriptor to linear memory
+	if ok := opts.Memory.WriteUint32Le(ptr, strDataPtr); !ok {
+		return ptr, free, fmt.Errorf("failed to write string data pointer at %d", ptr)
+	}
+	if ok := opts.Memory.WriteUint32Le(ptr+4, strDataLen); !ok {
+		return ptr, free, fmt.Errorf("failed to write string length at %d", ptr+4)
+	}
+
+	return ptr, free, nil
+}
+
+func WriteParameterString(opts AbiOptions, value any, ptrHint *uint32) (args []uint32, free AbiFreeCallback, err error) {
+	// Initialize return values
+	freeCallbacks := []AbiFreeCallback{}
+	free = wrapFreeCallbacks(&freeCallbacks)
+
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return nil, free, errors.New("must pass a valid string pointer value")
+	}
+
+	// Validate that the value is a string type
+	if rv.Kind() != reflect.String {
+		return nil, free, fmt.Errorf("cannot write string from: %s", rv.Kind())
+	}
+
 	// Get the byte representation of the string
 	strEncoding := opts.StringEncoding
 	var strData []byte
@@ -135,40 +166,33 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 		encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
 		strData, err = encoder.Bytes([]byte(rv.String()))
 		if err != nil {
-			return ptr, free, fmt.Errorf("failed to encode string to UTF-16: %w", err)
+			return nil, free, fmt.Errorf("failed to encode string to UTF-16: %w", err)
 		}
 	default:
-		return ptr, free, fmt.Errorf("unsupported string encoding: %s", strEncoding)
+		return nil, free, fmt.Errorf("unsupported string encoding: %s", strEncoding)
 	}
 
 	// Get the alignment and size for the string data
+	strCodeUnits := uint32(len(rv.String()))
 	strAlignment := strEncoding.Alignment()
 	taggedCodeUnitSize := strEncoding.CodeUnitSize()
 	strByteLength := uint32(len(strData))
 
 	if strByteLength%taggedCodeUnitSize != 0 {
-		return ptr, free, fmt.Errorf("string data length %d is not a multiple of tagged code unit size %d", strByteLength, taggedCodeUnitSize)
+		return nil, free, fmt.Errorf("string data length %d is not a multiple of tagged code unit size %d", strByteLength, taggedCodeUnitSize)
 	}
 
 	// Allocate memory for the string data
 	strDataPtr, strFree, err := abi_malloc(opts, strByteLength, strAlignment)
 	if err != nil {
-		return ptr, free, err
+		return nil, free, err
 	}
 	freeCallbacks = append(freeCallbacks, strFree)
 
-	// Write string descriptor to linear memory
-	if ok := opts.Memory.WriteUint32Le(ptr, strDataPtr); !ok {
-		return ptr, free, fmt.Errorf("failed to write string data pointer at %d", ptr)
-	}
-	if ok := opts.Memory.WriteUint32Le(ptr+4, uint32(rv.Len())); !ok {
-		return ptr, free, fmt.Errorf("failed to write string length at %d", ptr+4)
-	}
-
 	// Write the string data to memory
 	if !opts.Memory.Write(strDataPtr, strData) {
-		return ptr, free, fmt.Errorf("failed to write string data at %d", strDataPtr)
+		return nil, free, fmt.Errorf("failed to write string data at %d", strDataPtr)
 	}
 
-	return ptr, free, nil
+	return []uint32{strDataPtr, strCodeUnits}, free, nil
 }

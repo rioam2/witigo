@@ -56,15 +56,8 @@ func ReadRecord(opts AbiOptions, ptr uint32, result any) error {
 func WriteRecord(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
 	// Initialize return values
 	ptr = 0
-	freeCallbacks := []AbiFreeCallback{AbiFreeCallbackNoop}
-	free = func() error {
-		for _, cb := range freeCallbacks {
-			if err := cb(); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
+	freeCallbacks := []AbiFreeCallback{}
+	free = wrapFreeCallbacks(&freeCallbacks)
 
 	// Validate input and retrieve element type of value
 	rv := reflect.ValueOf(value)

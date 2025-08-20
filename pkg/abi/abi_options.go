@@ -33,7 +33,7 @@ func (e StringEncoding) Alignment() uint32 {
 	}
 }
 
-type RuntimeCall func(ctx context.Context, name string, params ...uint64) ([]uint64, error)
+type RuntimeCall func(ctx context.Context, name string, params ...uint32) ([]uint32, error)
 
 type RuntimeMemory interface {
 	Size() uint32
