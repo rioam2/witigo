@@ -71,7 +71,7 @@ func (w *WitFunctionImpl) ReferencesType(t WitType) bool {
 			return true
 		}
 	}
-	if w.Returns().String() == t.String() && w.Returns().Kind() == t.Kind() {
+	if w.Returns() != nil && w.Returns().String() == t.String() && w.Returns().Kind() == t.Kind() {
 		return true
 	}
 	return false

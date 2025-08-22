@@ -98,3 +98,9 @@ int64_t exports_basic_example_int64_func(int64_t input) {
   // Example transformation: simply return the input incremented by 1
   return input + 1;
 }
+
+void exports_basic_example_no_return_func(bool) {
+  // This function intentionally does nothing and has no return value.
+  // It can be used to demonstrate a function that performs an action
+  // without returning any data.
+}

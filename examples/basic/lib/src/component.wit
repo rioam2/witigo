@@ -36,4 +36,5 @@ world basic-example {
     export variant-func: func (input: allowed-destinations) -> allowed-destinations;
     export enum-func: func (input: color) -> color;
     export int64-func: func (input: s64) -> s64;
+    export no-return-func: func (flag: bool);
 }
