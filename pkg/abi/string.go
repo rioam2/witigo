@@ -9,7 +9,7 @@ import (
 )
 
 // ReadString reads a string from linear memory at the specified pointer into the result.
-func ReadString(opts AbiOptions, ptr uint32, result any) error {
+func ReadString(opts AbiOptions, ptr uint64, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
@@ -47,18 +47,18 @@ func ReadString(opts AbiOptions, ptr uint32, result any) error {
 	}
 
 	// Validate alignment of string data pointer
-	if strPtr != AlignTo(strPtr, strAlignment) {
+	if uint64(strPtr) != AlignTo(uint64(strPtr), uint64(strAlignment)) {
 		return fmt.Errorf("string pointer %d is not aligned to %d bytes", strPtr, strAlignment)
 	}
 
 	// Validate that the string pointer is within bounds
-	strByteLength := taggedCodeUnits * taggedCodeUnitSize
-	if strPtr+strByteLength > opts.Memory.Size() {
+	strByteLength := uint64(taggedCodeUnits) * taggedCodeUnitSize
+	if uint64(strPtr)+strByteLength > opts.Memory.Size() {
 		return fmt.Errorf("string pointer %d with length %d exceeds memory size %d", strPtr, strByteLength, opts.Memory.Size())
 	}
 
 	// Read the string data from memory
-	strData, ok := opts.Memory.Read(strPtr, strByteLength)
+	strData, ok := opts.Memory.Read(uint64(strPtr), strByteLength)
 	if !ok {
 		return fmt.Errorf("failed to read string data at %d with length %d", strPtr, strByteLength)
 	}
@@ -81,7 +81,7 @@ func ReadString(opts AbiOptions, ptr uint32, result any) error {
 	}
 }
 
-func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+func WriteString(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
 	ptr = 0
 	freeCallbacks := []AbiFreeCallback{}
@@ -126,19 +126,19 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 	strDataLen := params[1]
 
 	// Write string descriptor to linear memory
-	if ok := opts.Memory.WriteUint32Le(ptr, strDataPtr); !ok {
+	if ok := opts.Memory.WriteUint32Le(ptr, uint32(strDataPtr)); !ok {
 		return ptr, free, fmt.Errorf("failed to write string data pointer at %d", ptr)
 	}
-	if ok := opts.Memory.WriteUint32Le(ptr+4, strDataLen); !ok {
+	if ok := opts.Memory.WriteUint32Le(ptr+4, uint32(strDataLen)); !ok {
 		return ptr, free, fmt.Errorf("failed to write string length at %d", ptr+4)
 	}
 
 	return ptr, free, nil
 }
 
-func WriteParameterString(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+func WriteParameterString(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint32{}
+	args = []uint64{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -174,10 +174,10 @@ func WriteParameterString(opts AbiOptions, value any) (args []uint32, free AbiFr
 	}
 
 	// Get the alignment and size for the string data
-	strCodeUnits := uint32(len(rv.String()))
+	strCodeUnits := uint64(len(rv.String()))
 	strAlignment := strEncoding.Alignment()
 	taggedCodeUnitSize := strEncoding.CodeUnitSize()
-	strByteLength := uint32(len(strData))
+	strByteLength := uint64(len(strData))
 
 	if strByteLength%taggedCodeUnitSize != 0 {
 		return args, free, fmt.Errorf("string data length %d is not a multiple of tagged code unit size %d", strByteLength, taggedCodeUnitSize)

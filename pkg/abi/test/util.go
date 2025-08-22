@@ -10,21 +10,21 @@ type FakeMemory struct {
 	bytes []byte
 }
 
-func (m *FakeMemory) Read(ptr uint32, size uint32) ([]byte, bool) {
+func (m *FakeMemory) Read(ptr uint64, size uint64) ([]byte, bool) {
 	if int(ptr)+int(size) > len(m.bytes) {
 		return nil, false
 	}
 	return m.bytes[ptr : ptr+size], true
 }
 
-func (m *FakeMemory) ReadUint32Le(ptr uint32) (uint32, bool) {
+func (m *FakeMemory) ReadUint32Le(ptr uint64) (uint32, bool) {
 	if int(ptr)+4 > len(m.bytes) {
 		return 0, false
 	}
 	return uint32(m.bytes[ptr]) | uint32(m.bytes[ptr+1])<<8 | uint32(m.bytes[ptr+2])<<16 | uint32(m.bytes[ptr+3])<<24, true
 }
 
-func (m *FakeMemory) Write(ptr uint32, data []byte) bool {
+func (m *FakeMemory) Write(ptr uint64, data []byte) bool {
 	diff := int(ptr) + len(data) - len(m.bytes)
 	if diff > 0 {
 		m.bytes = append(m.bytes, make([]byte, diff)...)
@@ -33,7 +33,7 @@ func (m *FakeMemory) Write(ptr uint32, data []byte) bool {
 	return true
 }
 
-func (m *FakeMemory) WriteUint32Le(ptr uint32, value uint32) bool {
+func (m *FakeMemory) WriteUint32Le(ptr uint64, value uint32) bool {
 	diff := int(ptr) + 4 - len(m.bytes)
 	if diff > 0 {
 		m.bytes = append(m.bytes, make([]byte, diff)...)
@@ -45,8 +45,8 @@ func (m *FakeMemory) WriteUint32Le(ptr uint32, value uint32) bool {
 	return true
 }
 
-func (m *FakeMemory) Size() uint32 {
-	return uint32(len(m.bytes))
+func (m *FakeMemory) Size() uint64 {
+	return uint64(len(m.bytes))
 }
 
 func createMemory(bytes []byte) abi.RuntimeMemory {
@@ -55,7 +55,7 @@ func createMemory(bytes []byte) abi.RuntimeMemory {
 	}
 }
 
-func createMemoryFromMap(data map[uint32][]byte) abi.RuntimeMemory {
+func createMemoryFromMap(data map[uint64][]byte) abi.RuntimeMemory {
 	capacity := 0
 	for startAddr, b := range data {
 		maxAddr := int(startAddr) + int(len(b))
@@ -70,15 +70,15 @@ func createMemoryFromMap(data map[uint32][]byte) abi.RuntimeMemory {
 	return createMemory(bytes)
 }
 
-func createAbiOptionsFromMemoryMap(data map[uint32][]byte) abi.AbiOptions {
-	allocPtr := uint32(0x10000)
-	allocIncr := uint32(0x1000)
-	call := func(ctx context.Context, name string, params ...uint32) ([]uint32, error) {
+func createAbiOptionsFromMemoryMap(data map[uint64][]byte) abi.AbiOptions {
+	allocPtr := uint64(0x10000)
+	allocIncr := uint64(0x1000)
+	call := func(ctx context.Context, name string, params ...uint64) ([]uint64, error) {
 		if name == "cabi_realloc" {
 			allocPtr += allocIncr
-			return []uint32{allocPtr}, nil
+			return []uint64{allocPtr}, nil
 		}
-		return []uint32{0}, nil
+		return []uint64{0}, nil
 	}
 
 	mem := createMemoryFromMap(data)

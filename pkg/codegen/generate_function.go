@@ -11,7 +11,7 @@ func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *
 		receiver,
 		GenerateSignatureFromFunction(w),
 	)
-	fn = fn.AddStatements(generator.NewRawStatementf("var args []uint32"))
+	fn = fn.AddStatements(generator.NewRawStatementf("var args []uint64"))
 	fn = fn.AddStatements(generator.NewRawStatementf("var result %s", GenerateTypenameFromType(w.Returns())))
 	for idx, param := range w.Params() {
 		fn = fn.AddStatements(

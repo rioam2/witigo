@@ -11,7 +11,7 @@ const (
 	StringEncodingUTF16 StringEncoding = "utf16"
 )
 
-func (e StringEncoding) CodeUnitSize() uint32 {
+func (e StringEncoding) CodeUnitSize() uint64 {
 	switch e {
 	case StringEncodingUTF8:
 		return 1
@@ -22,7 +22,7 @@ func (e StringEncoding) CodeUnitSize() uint32 {
 	}
 }
 
-func (e StringEncoding) Alignment() uint32 {
+func (e StringEncoding) Alignment() uint64 {
 	switch e {
 	case StringEncodingUTF8:
 		return 1
@@ -33,14 +33,14 @@ func (e StringEncoding) Alignment() uint32 {
 	}
 }
 
-type RuntimeCall func(ctx context.Context, name string, params ...uint32) ([]uint32, error)
+type RuntimeCall func(ctx context.Context, name string, params ...uint64) ([]uint64, error)
 
 type RuntimeMemory interface {
-	Size() uint32
-	Read(offset, byteCount uint32) ([]byte, bool)
-	ReadUint32Le(offset uint32) (uint32, bool)
-	Write(offset uint32, v []byte) bool
-	WriteUint32Le(offset, v uint32) bool
+	Size() uint64
+	Read(offset, byteCount uint64) ([]byte, bool)
+	ReadUint32Le(offset uint64) (uint32, bool)
+	Write(offset uint64, v []byte) bool
+	WriteUint32Le(offset uint64, v uint32) bool
 }
 
 type AbiOptions struct {

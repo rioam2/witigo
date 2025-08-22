@@ -11,15 +11,15 @@ import (
 func TestReadString(t *testing.T) {
 	tests := []struct {
 		name           string
-		memoryMap      map[uint32][]byte
-		ptr            uint32
+		memoryMap      map[uint64][]byte
+		ptr            uint64
 		encoding       abi.StringEncoding
 		expectedString string
 		expectError    bool
 	}{
 		{
 			name: "read UTF8 string",
-			memoryMap: map[uint32][]byte{
+			memoryMap: map[uint64][]byte{
 				0:   {100, 0, 0, 0}, // String pointer at offset 100
 				4:   {5, 0, 0, 0},   // String length 5 code units
 				100: []byte("hello"),
@@ -31,7 +31,7 @@ func TestReadString(t *testing.T) {
 		},
 		{
 			name: "read UTF16 string",
-			memoryMap: map[uint32][]byte{
+			memoryMap: map[uint64][]byte{
 				0:   {100, 0, 0, 0},                           // String pointer at offset 100
 				4:   {5, 0, 0, 0},                             // String length 5 code units (10 bytes for UTF16)
 				100: {'h', 0, 'e', 0, 'l', 0, 'l', 0, 'o', 0}, // UTF16-LE encoding of "hello"
@@ -43,7 +43,7 @@ func TestReadString(t *testing.T) {
 		},
 		{
 			name: "unaligned string pointer",
-			memoryMap: map[uint32][]byte{
+			memoryMap: map[uint64][]byte{
 				0: {101, 0, 0, 0}, // String pointer at offset 101 (unaligned for UTF16)
 				4: {5, 0, 0, 0},   // String length 5 code units
 			},
@@ -53,7 +53,7 @@ func TestReadString(t *testing.T) {
 		},
 		{
 			name: "out of bounds string pointer",
-			memoryMap: map[uint32][]byte{
+			memoryMap: map[uint64][]byte{
 				0: {0x00, 0x04, 0x00, 0x00}, // String pointer beyond memory bounds (1024)
 				4: {5, 0, 0, 0},             // String length 5 code units
 			},
@@ -63,7 +63,7 @@ func TestReadString(t *testing.T) {
 		},
 		{
 			name: "out of bounds string length",
-			memoryMap: map[uint32][]byte{
+			memoryMap: map[uint64][]byte{
 				0: {100, 0, 0, 0},     // String pointer at offset 100
 				4: {0xFF, 0x03, 0, 0}, // String length too large (0x3FF = 1023)
 			},
@@ -73,7 +73,7 @@ func TestReadString(t *testing.T) {
 		},
 		{
 			name: "empty string",
-			memoryMap: map[uint32][]byte{
+			memoryMap: map[uint64][]byte{
 				0:   {100, 0, 0, 0}, // String pointer at offset 100
 				4:   {0, 0, 0, 0},   // String length 0 code units
 				100: {},             // No data at string pointer

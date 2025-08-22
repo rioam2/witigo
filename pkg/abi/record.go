@@ -7,7 +7,7 @@ import (
 )
 
 // ReadRecord reads a record from memory at the specified pointer into the result.
-func ReadRecord(opts AbiOptions, ptr uint32, result any) error {
+func ReadRecord(opts AbiOptions, ptr uint64, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
@@ -53,7 +53,7 @@ func ReadRecord(opts AbiOptions, ptr uint32, result any) error {
 	return nil
 }
 
-func WriteRecord(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+func WriteRecord(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
 	ptr = 0
 	freeCallbacks := []AbiFreeCallback{}
@@ -108,9 +108,9 @@ func WriteRecord(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 	return ptr, free, nil
 }
 
-func WriteParameterRecord(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+func WriteParameterRecord(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint32{}
+	args = []uint64{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 

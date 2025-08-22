@@ -29,7 +29,7 @@ func TestReadOption_InvalidType(t *testing.T) {
 }
 
 func TestReadOption_None(t *testing.T) {
-	opts := createAbiOptionsFromMemoryMap(map[uint32][]byte{
+	opts := createAbiOptionsFromMemoryMap(map[uint64][]byte{
 		0x00: {0x00},
 	})
 	var result abi.Option[int]
@@ -38,7 +38,7 @@ func TestReadOption_None(t *testing.T) {
 }
 
 func TestReadOption_Some(t *testing.T) {
-	opts := createAbiOptionsFromMemoryMap(map[uint32][]byte{
+	opts := createAbiOptionsFromMemoryMap(map[uint64][]byte{
 		0x00: {0x01},
 		0x04: {0x42, 0x00, 0x00, 0x00},
 	})
@@ -119,7 +119,7 @@ func TestWriteParameterOption_None(t *testing.T) {
 	args, free, err := abi.WriteParameterOption(opts, &value)
 	require.NoError(t, err)
 	defer free()
-	assert.Equal(t, []uint32{0, 0}, args)
+	assert.Equal(t, []uint64{0, 0}, args)
 }
 
 func TestWriteParameterOption_Some(t *testing.T) {
@@ -129,8 +129,8 @@ func TestWriteParameterOption_Some(t *testing.T) {
 	require.NoError(t, err)
 	defer free()
 	assert.Equal(t, 2, len(args))
-	assert.Equal(t, uint32(1), args[0])    // Discriminant
-	assert.Equal(t, uint32(0x42), args[1]) // Value
+	assert.Equal(t, uint64(1), args[0])    // Discriminant
+	assert.Equal(t, uint64(0x42), args[1]) // Value
 }
 
 func TestWriteThenReadOptionNone(t *testing.T) {

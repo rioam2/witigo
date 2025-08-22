@@ -7,7 +7,7 @@ import (
 )
 
 // ReadList reads a list from linear memory at the specified pointer into the result.
-func ReadList(opts AbiOptions, ptr uint32, result any) error {
+func ReadList(opts AbiOptions, ptr uint64, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
@@ -47,15 +47,15 @@ func ReadList(opts AbiOptions, ptr uint32, result any) error {
 	newSlice := reflect.MakeSlice(rv.Type(), int(listLength), int(listLength))
 
 	// Read each element from memory and populate the new slice
-	for i := 0; i < int(listLength); i++ {
-		elemPtr := listDataPtr + uint32(i)*elemSize
+	for i := range uint64(listLength) {
+		elemPtr := uint64(listDataPtr) + i*elemSize
 		elemVal := reflect.New(elemType).Interface()
 		err := Read(opts, elemPtr, elemVal)
 		if err != nil {
 			return fmt.Errorf("failed to read element %d at %d: %w", i, elemPtr, err)
 		}
 		elemRv := reflect.ValueOf(elemVal).Elem()
-		newSlice.Index(i).Set(elemRv)
+		newSlice.Index(int(i)).Set(elemRv)
 	}
 
 	// Set the new slice to the result
@@ -63,7 +63,7 @@ func ReadList(opts AbiOptions, ptr uint32, result any) error {
 	return nil
 }
 
-func WriteList(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+func WriteList(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
 	ptr = 0
 	freeCallbacks := []AbiFreeCallback{}
@@ -103,20 +103,20 @@ func WriteList(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Ab
 	listLength := listDataArgs[1]
 
 	// Write list header (data pointer and length)
-	if !opts.Memory.WriteUint32Le(ptr, listDataPtr) {
+	if !opts.Memory.WriteUint32Le(ptr, uint32(listDataPtr)) {
 		return ptr, free, fmt.Errorf("failed to write list data pointer at %d", ptr)
 	}
 
-	if !opts.Memory.WriteUint32Le(ptr+4, listLength) {
+	if !opts.Memory.WriteUint32Le(ptr+4, uint32(listLength)) {
 		return ptr, free, fmt.Errorf("failed to write list length at %d", ptr+4)
 	}
 
 	return ptr, free, nil
 }
 
-func WriteParameterList(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+func WriteParameterList(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint32{}
+	args = []uint64{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -130,7 +130,7 @@ func WriteParameterList(opts AbiOptions, value any) (args []uint32, free AbiFree
 	}
 
 	// Allocate memory for the list data
-	listLength := uint32(rv.Len())
+	listLength := uint64(rv.Len())
 	elemType := rv.Type().Elem()
 	elemSize := SizeOf(reflect.Zero(elemType).Interface())
 	elemAlignment := AlignmentOf(reflect.Zero(elemType).Interface())

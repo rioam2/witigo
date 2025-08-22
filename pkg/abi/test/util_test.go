@@ -9,9 +9,9 @@ import (
 func TestAlignTo(t *testing.T) {
 	tests := []struct {
 		name      string
-		ptr       uint32
-		alignment uint32
-		expected  uint32
+		ptr       uint64
+		alignment uint64
+		expected  uint64
 	}{
 		{
 			name:      "No alignment needed",

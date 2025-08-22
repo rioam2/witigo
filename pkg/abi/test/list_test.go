@@ -10,14 +10,14 @@ import (
 func TestReadListString(t *testing.T) {
 	tests := []struct {
 		name        string
-		memory      map[uint32][]uint8
-		ptr         uint32
+		memory      map[uint64][]uint8
+		ptr         uint64
 		expected    []string
 		shouldError bool
 	}{
 		{
 			name: "valid string list",
-			memory: map[uint32][]uint8{
+			memory: map[uint64][]uint8{
 				0x00: {0x0C, 0, 0, 0},           // list ptr = 0x0C
 				0x04: {3, 0, 0, 0},              // list length = 3
 				0x0C: {0x24, 0, 0, 0},           // string 1 pointer = 0x24
@@ -55,7 +55,7 @@ func TestReadListUint32(t *testing.T) {
 	tests := []struct {
 		name        string
 		memory      []byte
-		ptr         uint32
+		ptr         uint64
 		expected    []uint32
 		shouldError bool
 	}{
@@ -133,14 +133,14 @@ func TestReadListUint32(t *testing.T) {
 func TestReadListOfListStrings(t *testing.T) {
 	tests := []struct {
 		name        string
-		memory      map[uint32][]uint8
-		ptr         uint32
+		memory      map[uint64][]uint8
+		ptr         uint64
 		expected    [][]string
 		shouldError bool
 	}{
 		{
 			name: "valid list of lists",
-			memory: map[uint32][]uint8{
+			memory: map[uint64][]uint8{
 				0x00: {0x08, 0, 0, 0}, // list[*][*] ptr
 				0x04: {2, 0, 0, 0},    // list[*][*] length
 				0x08: {0x50, 0, 0, 0}, // list[0][*] pointer
@@ -169,20 +169,20 @@ func TestReadListOfListStrings(t *testing.T) {
 		},
 		{
 			name:        "nil result pointer",
-			memory:      map[uint32][]uint8{0: {0, 0, 0, 0}},
+			memory:      map[uint64][]uint8{0: {0, 0, 0, 0}},
 			ptr:         0,
 			shouldError: true,
 		},
 		{
 			name:        "invalid list pointer",
-			memory:      map[uint32][]uint8{},
+			memory:      map[uint64][]uint8{},
 			ptr:         0,
 			expected:    [][]string{},
 			shouldError: true,
 		},
 		{
 			name:        "invalid list length",
-			memory:      map[uint32][]uint8{0: {0, 0, 0, 0}},
+			memory:      map[uint64][]uint8{0: {0, 0, 0, 0}},
 			ptr:         0,
 			expected:    [][]string{},
 			shouldError: true,

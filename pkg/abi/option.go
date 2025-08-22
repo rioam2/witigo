@@ -11,7 +11,7 @@ type Option[T any] struct {
 	Value  T
 }
 
-func ReadOption(opts AbiOptions, ptr uint32, result any) error {
+func ReadOption(opts AbiOptions, ptr uint64, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
@@ -45,7 +45,7 @@ func ReadOption(opts AbiOptions, ptr uint32, result any) error {
 	return Read(opts, valuePtr, fieldRv.Addr().Interface())
 }
 
-func WriteOption(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+func WriteOption(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
 	ptr = 0
 	freeCallbacks := []AbiFreeCallback{}
@@ -53,7 +53,7 @@ func WriteOption(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(value)
-	if value == nil || rv.IsZero() || rv.IsNil() {
+	if rv.Kind() != reflect.Struct && (value == nil || rv.IsZero() || rv.IsNil()) {
 		return ptr, free, errors.New("must pass a non-nil pointer value")
 	}
 	if rv.Kind() == reflect.Pointer {
@@ -104,15 +104,15 @@ func WriteOption(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 	return ptr, free, nil
 }
 
-func WriteParameterOption(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+func WriteParameterOption(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint32{}
+	args = []uint64{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(value)
-	if value == nil || rv.IsZero() || rv.IsNil() {
+	if rv.Kind() != reflect.Struct && (value == nil || rv.IsZero() || rv.IsNil()) {
 		return args, free, errors.New("must pass a non-nil pointer value")
 	}
 	if rv.Kind() == reflect.Pointer {
@@ -126,7 +126,7 @@ func WriteParameterOption(opts AbiOptions, value any) (args []uint32, free AbiFr
 	}
 
 	discriminant := rv.Field(0).Bool()
-	discriminantUint := uint32(0)
+	discriminantUint := uint64(0)
 	if discriminant {
 		discriminantUint = 1
 	}

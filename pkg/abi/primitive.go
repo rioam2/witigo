@@ -10,7 +10,7 @@ import (
 )
 
 // Read reads a value from linear memory at the specified pointer into the result.
-func ReadInt(opts AbiOptions, ptr uint32, result any) error {
+func ReadInt(opts AbiOptions, ptr uint64, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
@@ -52,7 +52,7 @@ func ReadInt(opts AbiOptions, ptr uint32, result any) error {
 	return nil
 }
 
-func WriteInt(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+func WriteInt(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
 	ptr = 0
 	freeCallbacks := []AbiFreeCallback{}
@@ -110,9 +110,9 @@ func WriteInt(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Abi
 	return ptr, free, nil
 }
 
-func WriteParameterInt(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+func WriteParameterInt(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint32{}
+	args = []uint64{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -131,16 +131,14 @@ func WriteParameterInt(opts AbiOptions, value any) (args []uint32, free AbiFreeC
 	}
 
 	if rv.CanUint() {
-		// TODO: Fix trucation of byte size
-		args = append(args, uint32(rv.Uint()))
+		args = append(args, (rv.Uint()))
 	} else if rv.CanInt() {
-		// TODO: Fix trucation of byte size
-		args = append(args, uint32(rv.Int()))
+		args = append(args, uint64(rv.Int()))
 	}
 	return args, free, nil
 }
 
-func ReadBool(opts AbiOptions, ptr uint32, result any) error {
+func ReadBool(opts AbiOptions, ptr uint64, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
@@ -165,7 +163,7 @@ func ReadBool(opts AbiOptions, ptr uint32, result any) error {
 	return nil
 }
 
-func WriteBool(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+func WriteBool(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
 	ptr = 0
 	freeCallbacks := []AbiFreeCallback{}
@@ -215,9 +213,9 @@ func WriteBool(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Ab
 	return ptr, free, nil
 }
 
-func WriteParameterBool(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+func WriteParameterBool(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint32{}
+	args = []uint64{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -247,7 +245,7 @@ func WriteParameterBool(opts AbiOptions, value any) (args []uint32, free AbiFree
 var CANONICAL_FLOAT32_NAN = []byte{0x7f, 0xc0, 0x00, 0x00}
 var CANONICAL_FLOAT64_NAN = []byte{0x7f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
-func ReadFloat(opts AbiOptions, ptr uint32, result any) error {
+func ReadFloat(opts AbiOptions, ptr uint64, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
@@ -304,7 +302,7 @@ func ReadFloat(opts AbiOptions, ptr uint32, result any) error {
 	return nil
 }
 
-func WriteFloat(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+func WriteFloat(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
 	ptr = 0
 	freeCallbacks := []AbiFreeCallback{}
@@ -356,9 +354,10 @@ func WriteFloat(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free A
 	return ptr, free, nil
 }
 
-func WriteParameterFloat(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+// TODO: write some tests for this fn
+func WriteParameterFloat(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint32{}
+	args = []uint64{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -378,10 +377,9 @@ func WriteParameterFloat(opts AbiOptions, value any) (args []uint32, free AbiFre
 
 	// Append the float value as an argument
 	if rv.Kind() == reflect.Float32 {
-		args = append(args, math.Float32bits(float32(rv.Float())))
+		args = append(args, uint64(math.Float32bits(float32(rv.Float()))))
 	} else if rv.Kind() == reflect.Float64 {
-		// TODO: Fix trucation of byte size
-		args = append(args, uint32(math.Float64bits(rv.Float())))
+		args = append(args, uint64(math.Float64bits(rv.Float())))
 	}
 
 	return args, free, nil

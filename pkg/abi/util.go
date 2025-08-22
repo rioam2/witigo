@@ -16,7 +16,7 @@ var AbiFreeCallbackNoop = func() error {
 }
 
 // Read reads a value from memory at the specified pointer into the result.
-func Read(opts AbiOptions, ptr uint32, result any) error {
+func Read(opts AbiOptions, ptr uint64, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
@@ -52,7 +52,7 @@ func Read(opts AbiOptions, ptr uint32, result any) error {
 }
 
 // Write writes a value to memory at the specified pointer from the result.
-func Write(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFreeCallback, err error) {
+func Write(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFreeCallback, err error) {
 	// Validate input and retrieve element type of value
 	rv := reflect.ValueOf(value)
 	if rv.Kind() == reflect.Ptr {
@@ -90,7 +90,7 @@ func Write(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFre
 }
 
 // WriteParameter writes a parameter value to memory and returns the arguments for the ABI call.
-func WriteParameter(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+func WriteParameter(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
 	// Validate input and retrieve element type of value
 	rv := reflect.ValueOf(value)
 	if rv.Kind() == reflect.Ptr {
@@ -128,15 +128,15 @@ func WriteParameter(opts AbiOptions, value any) (args []uint32, free AbiFreeCall
 }
 
 // AlignTo aligns a pointer to the nearest multiple of the specified alignment.
-func AlignTo(ptr uint32, alignment uint32) uint32 {
+func AlignTo(ptr uint64, alignment uint64) uint64 {
 	if alignment <= 0 {
 		return ptr
 	}
-	return uint32(math.Ceil(float64(ptr)/float64(alignment)) * float64(alignment))
+	return uint64(math.Ceil(float64(ptr)/float64(alignment)) * float64(alignment))
 }
 
 // SizeOf returns the size in bytes of the given value type as defined in the Canonical ABI.
-func SizeOf(value any) uint32 {
+func SizeOf(value any) uint64 {
 	rv := reflect.ValueOf(value)
 	if rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
@@ -153,7 +153,7 @@ func SizeOf(value any) uint32 {
 	case reflect.Struct:
 		structName := rv.Type().Name()
 		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
-			size := uint32(0)
+			size := uint64(0)
 			for i := 0; i < rv.NumField(); i++ {
 				field := rv.Field(i)
 				fieldSize := SizeOf(field.Interface())
@@ -182,7 +182,7 @@ func SizeOf(value any) uint32 {
 }
 
 // AlignmentOf returns the alignment in bytes of the given value type as defined in the Canonical ABI.
-func AlignmentOf(value any) uint32 {
+func AlignmentOf(value any) uint64 {
 	rv := reflect.ValueOf(value)
 	if rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
@@ -199,7 +199,7 @@ func AlignmentOf(value any) uint32 {
 	case reflect.Struct:
 		structName := rv.Type().Name()
 		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
-			alignment := uint32(1)
+			alignment := uint64(1)
 			for i := 0; i < rv.NumField(); i++ {
 				field := rv.Field(i)
 				fieldAlignment := AlignmentOf(field.Interface())

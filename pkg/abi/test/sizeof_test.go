@@ -15,7 +15,7 @@ func TestSizeOf(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    any
-		expected uint32
+		expected uint64
 	}{
 		{
 			name:     "int32",

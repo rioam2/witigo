@@ -11,8 +11,8 @@ import (
 func TestReadInt(t *testing.T) {
 	testCases := []struct {
 		name        string
-		ptr         uint32
-		memoryData  map[uint32][]byte
+		ptr         uint64
+		memoryData  map[uint64][]byte
 		valueType   string
 		expected    interface{}
 		expectError bool
@@ -20,7 +20,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "read int8",
 			ptr:  0x100,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x100: {0x7F},
 			},
 			valueType: "int8",
@@ -29,7 +29,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "read uint8",
 			ptr:  0x100,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x100: {0xFF},
 			},
 			valueType: "uint8",
@@ -38,7 +38,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "read int16",
 			ptr:  0x200,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x200: {0x34, 0x12},
 			},
 			valueType: "int16",
@@ -47,7 +47,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "read uint16",
 			ptr:  0x200,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x200: {0x34, 0x12},
 			},
 			valueType: "uint16",
@@ -56,7 +56,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "read int32",
 			ptr:  0x300,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x300: {0x78, 0x56, 0x34, 0x12},
 			},
 			valueType: "int32",
@@ -65,7 +65,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "read uint32",
 			ptr:  0x300,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x300: {0x78, 0x56, 0x34, 0x12},
 			},
 			valueType: "uint32",
@@ -74,7 +74,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "read int64",
 			ptr:  0x400,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x400: {0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01},
 			},
 			valueType: "int64",
@@ -83,7 +83,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "read uint64",
 			ptr:  0x400,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x400: {0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01},
 			},
 			valueType: "uint64",
@@ -92,7 +92,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "invalid memory address",
 			ptr:  0x500,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x100: {0x01},
 			},
 			valueType:   "int8",
@@ -101,7 +101,7 @@ func TestReadInt(t *testing.T) {
 		{
 			name: "insufficient memory size",
 			ptr:  0x200,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x200: {0x01}, // Only 1 byte, but int16 needs 2
 			},
 			valueType:   "int16",
@@ -192,7 +192,7 @@ func TestReadInt(t *testing.T) {
 
 	// Test nil pointer case
 	t.Run("nil result pointer", func(t *testing.T) {
-		opts := createAbiOptionsFromMemoryMap(map[uint32][]byte{0x100: {0x01}})
+		opts := createAbiOptionsFromMemoryMap(map[uint64][]byte{0x100: {0x01}})
 		err := abi.Read(opts, 0x100, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "must pass a non-nil pointer result")
@@ -202,15 +202,15 @@ func TestReadInt(t *testing.T) {
 func TestReadBool(t *testing.T) {
 	testCases := []struct {
 		name        string
-		ptr         uint32
-		memoryData  map[uint32][]byte
+		ptr         uint64
+		memoryData  map[uint64][]byte
 		expected    bool
 		expectError bool
 	}{
 		{
 			name: "read true",
 			ptr:  0x100,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x100: {0x01},
 			},
 			expected: true,
@@ -218,7 +218,7 @@ func TestReadBool(t *testing.T) {
 		{
 			name: "read false",
 			ptr:  0x200,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x200: {0x00},
 			},
 			expected: false,
@@ -226,7 +226,7 @@ func TestReadBool(t *testing.T) {
 		{
 			name: "invalid memory address",
 			ptr:  0x300,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x100: {0x01},
 			},
 			expectError: true,
@@ -234,7 +234,7 @@ func TestReadBool(t *testing.T) {
 		{
 			name: "insufficient memory size",
 			ptr:  0x400,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x400: {}, // No bytes available
 			},
 			expectError: true,
@@ -258,7 +258,7 @@ func TestReadBool(t *testing.T) {
 
 	// Test nil pointer case
 	t.Run("nil result pointer", func(t *testing.T) {
-		opts := createAbiOptionsFromMemoryMap(map[uint32][]byte{0x100: {0x01}})
+		opts := createAbiOptionsFromMemoryMap(map[uint64][]byte{0x100: {0x01}})
 		err := abi.Read(opts, 0x100, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "must pass a non-nil pointer result")
@@ -268,8 +268,8 @@ func TestReadBool(t *testing.T) {
 func TestReadFloat(t *testing.T) {
 	testCases := []struct {
 		name        string
-		ptr         uint32
-		memoryData  map[uint32][]byte
+		ptr         uint64
+		memoryData  map[uint64][]byte
 		valueType   string
 		expected    any
 		expectError bool
@@ -277,7 +277,7 @@ func TestReadFloat(t *testing.T) {
 		{
 			name: "read float32",
 			ptr:  0x100,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x100: {0x00, 0x00, 0x80, 0x3F}, // 1.0 in float32
 			},
 			valueType: "float32",
@@ -286,7 +286,7 @@ func TestReadFloat(t *testing.T) {
 		{
 			name: "read float64",
 			ptr:  0x200,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x200: {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F}, // 1.0 in float64
 			},
 			valueType: "float64",
@@ -295,7 +295,7 @@ func TestReadFloat(t *testing.T) {
 		{
 			name: "read float32 1.2345",
 			ptr:  0x250,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x250: {0x19, 0x04, 0x9E, 0x3F}, // 1.2345 in float32
 			},
 			valueType: "float32",
@@ -304,7 +304,7 @@ func TestReadFloat(t *testing.T) {
 		{
 			name: "read float32 NaN",
 			ptr:  0x300,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x300: {0x7F, 0xC0, 0x00, 0x00}, // Canonical NaN for float32
 			},
 			valueType: "float32",
@@ -313,7 +313,7 @@ func TestReadFloat(t *testing.T) {
 		{
 			name: "read float64 NaN",
 			ptr:  0x400,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x400: {0x7F, 0xF8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Canonical NaN for float64
 			},
 			valueType: "float64",
@@ -322,7 +322,7 @@ func TestReadFloat(t *testing.T) {
 		{
 			name: "invalid memory address",
 			ptr:  0x500,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x100: {0x00, 0x00, 0x80, 0x3F},
 			},
 			valueType:   "float32",
@@ -331,7 +331,7 @@ func TestReadFloat(t *testing.T) {
 		{
 			name: "insufficient memory size for float32",
 			ptr:  0x600,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x600: {0x00, 0x00}, // Only 2 bytes, but float32 needs 4
 			},
 			valueType:   "float32",
@@ -340,7 +340,7 @@ func TestReadFloat(t *testing.T) {
 		{
 			name: "insufficient memory size for float64",
 			ptr:  0x700,
-			memoryData: map[uint32][]byte{
+			memoryData: map[uint64][]byte{
 				0x700: {0x00, 0x00, 0x00, 0x00}, // Only 4 bytes, but float64 needs 8
 			},
 			valueType:   "float64",
@@ -385,7 +385,7 @@ func TestReadFloat(t *testing.T) {
 
 	// Test nil pointer case
 	t.Run("nil result pointer", func(t *testing.T) {
-		opts := createAbiOptionsFromMemoryMap(map[uint32][]byte{0x100: {0x00, 0x00, 0x80, 0x3F}})
+		opts := createAbiOptionsFromMemoryMap(map[uint64][]byte{0x100: {0x00, 0x00, 0x80, 0x3F}})
 		err := abi.Read(opts, 0x100, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "must pass a non-nil pointer result")

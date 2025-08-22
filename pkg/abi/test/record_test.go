@@ -15,7 +15,7 @@ func TestRead_ComplexStruct(t *testing.T) {
 		Message string
 	}
 
-	data := map[uint32][]byte{
+	data := map[uint64][]byte{
 		0x00: {1, 0, 0, 0},              // ID field
 		0x04: {1},                       // Active field
 		0x08: {0, 0, 0, 0, 0, 0, 0, 64}, // Score field (double: 2.0)
@@ -45,7 +45,7 @@ func TestRead_NestedStruct(t *testing.T) {
 		Details DemographicRecord
 	}
 
-	data := map[uint32][]byte{
+	data := map[uint64][]byte{
 		0x00: {1, 0, 0, 0},    // ID field
 		0x04: {25, 0, 0, 0},   // Details.Age field
 		0x08: {0x10, 0, 0, 0}, // Details.City field: String pointer
@@ -87,7 +87,7 @@ func TestRead_StructWithPadding(t *testing.T) {
 		Flag bool
 	}
 
-	data := map[uint32][]byte{
+	data := map[uint64][]byte{
 		0x00: {1, 0, 0, 0}, // ID field
 		0x04: {1},          // Flag field
 	}

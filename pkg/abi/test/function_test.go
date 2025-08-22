@@ -14,11 +14,11 @@ func TestCall(t *testing.T) {
 		name           string
 		opts           abi.AbiOptions
 		fnName         string
-		params         []uint32
-		expectedRet    uint32
+		params         []uint64
+		expectedRet    uint64
 		expectedErr    error
 		postReturnErr  error
-		callResults    []uint32
+		callResults    []uint64
 		callError      error
 		postCallError  error
 		postCallCalled bool
@@ -27,15 +27,15 @@ func TestCall(t *testing.T) {
 			name: "successful call",
 			opts: abi.AbiOptions{
 				Context: context.Background(),
-				Call: func(ctx context.Context, name string, params ...uint32) ([]uint32, error) {
+				Call: func(ctx context.Context, name string, params ...uint64) ([]uint64, error) {
 					if name == "test_function" {
-						return []uint32{42}, nil
+						return []uint64{42}, nil
 					}
 					return nil, nil
 				},
 			},
 			fnName:         "test_function",
-			params:         []uint32{1, 2, 3},
+			params:         []uint64{1, 2, 3},
 			expectedRet:    42,
 			expectedErr:    nil,
 			postCallCalled: false,
@@ -46,7 +46,7 @@ func TestCall(t *testing.T) {
 				Context: context.Background(),
 			},
 			fnName:         "test_function",
-			params:         []uint32{1, 2, 3},
+			params:         []uint64{1, 2, 3},
 			expectedRet:    0,
 			expectedErr:    fmt.Errorf("call function is not defined in AbiOptions"),
 			postCallCalled: false,
@@ -55,12 +55,12 @@ func TestCall(t *testing.T) {
 			name: "call function returns error",
 			opts: abi.AbiOptions{
 				Context: context.Background(),
-				Call: func(ctx context.Context, name string, params ...uint32) ([]uint32, error) {
+				Call: func(ctx context.Context, name string, params ...uint64) ([]uint64, error) {
 					return nil, errors.New("call error")
 				},
 			},
 			fnName:         "test_function",
-			params:         []uint32{1, 2, 3},
+			params:         []uint64{1, 2, 3},
 			expectedRet:    0,
 			expectedErr:    fmt.Errorf("function call test_function failed: call error"),
 			postCallCalled: false,
@@ -69,12 +69,12 @@ func TestCall(t *testing.T) {
 			name: "empty result",
 			opts: abi.AbiOptions{
 				Context: context.Background(),
-				Call: func(ctx context.Context, name string, params ...uint32) ([]uint32, error) {
-					return []uint32{}, nil
+				Call: func(ctx context.Context, name string, params ...uint64) ([]uint64, error) {
+					return []uint64{}, nil
 				},
 			},
 			fnName:         "test_function",
-			params:         []uint32{1, 2, 3},
+			params:         []uint64{1, 2, 3},
 			expectedRet:    0,
 			expectedErr:    nil,
 			postCallCalled: false,
@@ -83,17 +83,17 @@ func TestCall(t *testing.T) {
 			name: "post call success",
 			opts: abi.AbiOptions{
 				Context: context.Background(),
-				Call: func(ctx context.Context, name string, params ...uint32) ([]uint32, error) {
+				Call: func(ctx context.Context, name string, params ...uint64) ([]uint64, error) {
 					if name == "test_function" {
-						return []uint32{42}, nil
+						return []uint64{42}, nil
 					} else if name == "cabi_post_test_function" {
-						return []uint32{}, nil
+						return []uint64{}, nil
 					}
 					return nil, errors.New("unexpected function")
 				},
 			},
 			fnName:         "test_function",
-			params:         []uint32{1, 2, 3},
+			params:         []uint64{1, 2, 3},
 			expectedRet:    42,
 			expectedErr:    nil,
 			postReturnErr:  nil,
@@ -103,9 +103,9 @@ func TestCall(t *testing.T) {
 			name: "post call error",
 			opts: abi.AbiOptions{
 				Context: context.Background(),
-				Call: func(ctx context.Context, name string, params ...uint32) ([]uint32, error) {
+				Call: func(ctx context.Context, name string, params ...uint64) ([]uint64, error) {
 					if name == "test_function" {
-						return []uint32{42}, nil
+						return []uint64{42}, nil
 					} else if name == "cabi_post_test_function" {
 						return nil, errors.New("post call error")
 					}
@@ -113,7 +113,7 @@ func TestCall(t *testing.T) {
 				},
 			},
 			fnName:         "test_function",
-			params:         []uint32{1, 2, 3},
+			params:         []uint64{1, 2, 3},
 			expectedRet:    42,
 			expectedErr:    nil,
 			postReturnErr:  errors.New("post call error"),
