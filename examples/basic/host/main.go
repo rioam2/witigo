@@ -29,6 +29,20 @@ func main() {
 	}
 	fmt.Printf("Result of RecordFunc: %+v\n", recordFuncResult)
 
+	nestedRecordFuncResult, err := instance.NestedRecordFunc(basic_example_component.NestedRecord{Level: 1, Color: basic_example_component.ColorEnumNavyBlue, Customer: basic_example_component.CustomerRecord{Id: 1, Picture: basic_example_component.Option[[]uint8]{IsSome: true, Value: []uint8{1, 2}}, Name: "John Doe", Age: 30}})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error calling NestedRecordFunc: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Result of NestedRecordFunc: %+v\n", nestedRecordFuncResult)
+
+	simpleRecordFuncResult, err := instance.SimpleRecordFunc(basic_example_component.SimpleRecordRecord{Id: 42})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error calling SimpleRecordFunc: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Result of SimpleRecordFunc: %+v\n", simpleRecordFuncResult)
+
 	listFuncResult, err := instance.ListFunc([]uint64{1, 2, 3, 4, 5})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error calling ListFunc: %v\n", err)

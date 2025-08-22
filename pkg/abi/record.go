@@ -25,6 +25,21 @@ func ReadRecord(opts AbiOptions, ptr uint64, result any) error {
 		return errors.New("result must be a settable pointer")
 	}
 
+	// If the struct has one field that fits into one value, ptr is the value already
+	if rv.NumField() == 1 {
+		fieldRv := rv.Field(0)
+		if fieldRv.CanUint() {
+			fieldRv.SetUint(ptr)
+			return nil
+		} else if fieldRv.CanInt() {
+			fieldRv.SetInt(int64(ptr))
+			return nil
+		} else if fieldRv.CanFloat() {
+			fieldRv.SetFloat(float64(ptr))
+			return nil
+		}
+	}
+
 	alignment := AlignmentOf(result)
 	ptr = AlignTo(ptr, alignment)
 

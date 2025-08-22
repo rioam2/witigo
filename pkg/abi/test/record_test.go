@@ -100,6 +100,18 @@ func TestRead_StructWithPadding(t *testing.T) {
 	assert.Equal(t, true, record.Flag)
 }
 
+func TestRead_SimpleStruct(t *testing.T) {
+	type SimpleRecord struct {
+		ID int32
+	}
+	opts := createAbiOptionsFromMemoryMap(nil)
+	record := &SimpleRecord{}
+	err := abi.Read(opts, 0x42, record)
+
+	assert.NoError(t, err)
+	assert.Equal(t, int32(0x42), record.ID)
+}
+
 func TestWriteThenRead_StructWithPadding(t *testing.T) {
 	type PaddedRecord struct {
 		ID   int32

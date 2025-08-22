@@ -8,6 +8,30 @@ world basic-example {
         age: u32,
     }
 
+    record simple-record {
+        id: u32,
+    }
+
+    record big-record {
+        f01: u32,
+        f02: u32,
+        f03: u32,
+        f04: u32,
+        f05: u32,
+        f06: u32,
+        f07: u32,
+        f08: u32,
+        f09: u32,
+        f10: u32,
+        f11: u32,
+        f12: u32,
+        f13: u32,
+        f14: u32,
+        f15: u32,
+        f16: u32,
+        f17: u32,
+    }
+
     record nested {
         level: s8,
         color: color,
@@ -29,6 +53,8 @@ world basic-example {
     export string-func: func (input: string) -> string;
     export record-func: func (input: customer) -> customer;
     export nested-record-func: func (input: nested) -> nested;
+    export simple-record-func: func (input: simple-record) -> simple-record;
+    export big-record-func: func (input: big-record) -> big-record;
     export tuple-func: func (input: tuple<string, u32>) -> tuple<string, u32>;
     export list-func: func (input: list<u64>) -> list<u64>;
     export option-func: func (input: option<u64>) -> option<u64>;

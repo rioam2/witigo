@@ -25,6 +25,15 @@ void exports_basic_example_nested_record_func(basic_example_nested_t* input,
   exports_basic_example_record_func(&input->customer, &ret->customer);
 }
 
+void exports_basic_example_simple_record_func(
+    basic_example_simple_record_t* input,
+    basic_example_simple_record_t* ret) {
+  ret->id = input->id + 1;  // Example transformation
+}
+
+void exports_basic_example_big_record_func(basic_example_big_record_t* input,
+                                           basic_example_big_record_t* ret) {}
+
 void exports_basic_example_tuple_func(basic_example_tuple2_string_u32_t* input,
                                       basic_example_tuple2_string_u32_t* ret) {
   exports_basic_example_string_func(&input->f0, &ret->f0);
