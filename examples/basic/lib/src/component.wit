@@ -8,6 +8,12 @@ world basic-example {
         age: u32,
     }
 
+    record nested {
+        level: s8,
+        color: color,
+        customer: customer,
+    }
+
     variant allowed-destinations {
         none,
         any,
@@ -22,10 +28,12 @@ world basic-example {
 
     export string-func: func (input: string) -> string;
     export record-func: func (input: customer) -> customer;
+    export nested-record-func: func (input: nested) -> nested;
     export tuple-func: func (input: tuple<string, u32>) -> tuple<string, u32>;
     export list-func: func (input: list<u64>) -> list<u64>;
     export option-func: func (input: option<u64>) -> option<u64>;
     export result-func: func (input: result<u64, string>) -> result<u64, string>;
     export variant-func: func (input: allowed-destinations) -> allowed-destinations;
     export enum-func: func (input: color) -> color;
+    export int64-func: func (input: s64) -> s64;
 }

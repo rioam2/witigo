@@ -15,7 +15,7 @@ func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *
 	fn = fn.AddStatements(generator.NewRawStatementf("var result %s", GenerateTypenameFromType(w.Returns())))
 	for idx, param := range w.Params() {
 		fn = fn.AddStatements(
-			generator.NewRawStatementf("arg%02dArgs, arg%02dFree, err := abi.WriteParameter(i.abiOpts, %s, nil)", idx, idx, textcase.CamelCase(param.Name())),
+			generator.NewRawStatementf("arg%02dArgs, arg%02dFree, err := abi.WriteParameter(i.abiOpts, %s)", idx, idx, textcase.CamelCase(param.Name())),
 			generator.NewRawStatementf("defer arg%02dFree()", idx),
 			generator.NewRawStatementf("if err != nil {"),
 			generator.NewRawStatementf("  return result, fmt.Errorf(\"failed to write parameter %d: %%w\", err)", idx),

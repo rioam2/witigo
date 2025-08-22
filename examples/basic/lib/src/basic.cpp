@@ -20,6 +20,11 @@ void exports_basic_example_record_func(basic_example_customer_t* input,
   exports_basic_example_string_func(&input->name, &ret->name);
 }
 
+void exports_basic_example_nested_record_func(basic_example_nested_t* input,
+                                              basic_example_nested_t* ret) {
+  exports_basic_example_record_func(&input->customer, &ret->customer);
+}
+
 void exports_basic_example_tuple_func(basic_example_tuple2_string_u32_t* input,
                                       basic_example_tuple2_string_u32_t* ret) {
   exports_basic_example_string_func(&input->f0, &ret->f0);
@@ -87,4 +92,9 @@ basic_example_color_t exports_basic_example_enum_func(
       // Handle unexpected values gracefully
       return BASIC_EXAMPLE_COLOR_HOT_PINK;  // Default case
   }
+}
+
+int64_t exports_basic_example_int64_func(int64_t input) {
+  // Example transformation: simply return the input incremented by 1
+  return input + 1;
 }

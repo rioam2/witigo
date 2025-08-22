@@ -91,6 +91,15 @@ func GenerateFromWorld(w wit.WitWorldDefinition, packageName string) *generator.
 		),
 	)
 
+	// Add static type declaration for Option types
+	root = root.AddStatements(
+		generator.NewRawStatement("type Option[T any] struct {"),
+		generator.NewRawStatement("	IsSome bool"),
+		generator.NewRawStatement("	Value  T"),
+		generator.NewRawStatement("}"),
+		generator.NewNewline(),
+	)
+
 	for _, t := range w.Types() {
 		typeGen := GenerateTypedefFromType(t)
 		if typeGen == nil {

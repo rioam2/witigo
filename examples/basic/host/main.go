@@ -22,7 +22,7 @@ func main() {
 	}
 	fmt.Printf("Result of StringFunc: %+v\n", stringFuncResult)
 
-	recordFuncResult, err := instance.RecordFunc(basic_example_component.CustomerRecord{Id: 1, Picture: &[]uint8{1, 2}, Name: "John Doe", Age: 30})
+	recordFuncResult, err := instance.RecordFunc(basic_example_component.CustomerRecord{Id: 1, Picture: basic_example_component.Option[[]uint8]{IsSome: true, Value: []uint8{1, 2}}, Name: "John Doe", Age: 30})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error calling RecordFunc: %v\n", err)
 		os.Exit(1)
@@ -36,7 +36,7 @@ func main() {
 	}
 	fmt.Printf("Result of ListFunc: %+v\n", listFuncResult)
 
-	optionFuncResult, err := instance.OptionFunc(nil)
+	optionFuncResult, err := instance.OptionFunc(basic_example_component.Option[uint64]{IsSome: true, Value: 42})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error calling OptionFunc: %v\n", err)
 		os.Exit(1)

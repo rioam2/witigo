@@ -91,10 +91,6 @@ func WriteRecord(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 	fieldPtr := ptr
 	for i := 0; i < rv.NumField(); i++ {
 		field := rv.Field(i)
-		if !field.CanSet() {
-			return ptr, free, fmt.Errorf("field %d is not settable", i)
-		}
-
 		fieldSize := SizeOf(field.Interface())
 		fieldAlignment := AlignmentOf(field.Interface())
 		fieldPtr = AlignTo(fieldPtr, fieldAlignment)
@@ -110,4 +106,37 @@ func WriteRecord(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free 
 	}
 
 	return ptr, free, nil
+}
+
+func WriteParameterRecord(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+	// Initialize return values
+	args = []uint32{}
+	freeCallbacks := []AbiFreeCallback{}
+	free = wrapFreeCallbacks(&freeCallbacks)
+
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return nil, free, errors.New("must pass a valid struct pointer value")
+	}
+
+	// Write based on the kind of the value
+	if rv.Kind() != reflect.Struct {
+		return nil, free, fmt.Errorf("value must be a struct, got %s", rv.Kind())
+	}
+
+	for i := 0; i < rv.NumField(); i++ {
+		field := rv.Field(i)
+		fieldArgs, fieldFree, err := WriteParameter(opts, field.Interface())
+		freeCallbacks = append(freeCallbacks, fieldFree)
+		if err != nil {
+			return nil, free, fmt.Errorf("failed to write field %d: %w", i, err)
+		}
+		args = append(args, fieldArgs...)
+	}
+
+	return args, free, nil
 }

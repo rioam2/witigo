@@ -110,6 +110,36 @@ func WriteInt(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Abi
 	return ptr, free, nil
 }
 
+func WriteParameterInt(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+	// Initialize return values
+	args = []uint32{}
+	freeCallbacks := []AbiFreeCallback{}
+	free = wrapFreeCallbacks(&freeCallbacks)
+
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return args, free, errors.New("must pass a valid int/uint pointer value")
+	}
+
+	// Validate that the value is an integer or unsigned integer type
+	if !rv.CanUint() && !rv.CanInt() {
+		return args, free, fmt.Errorf("cannot write int/uint from: %s", rv.Kind())
+	}
+
+	if rv.CanUint() {
+		// TODO: Fix trucation of byte size
+		args = append(args, uint32(rv.Uint()))
+	} else if rv.CanInt() {
+		// TODO: Fix trucation of byte size
+		args = append(args, uint32(rv.Int()))
+	}
+	return args, free, nil
+}
+
 func ReadBool(opts AbiOptions, ptr uint32, result any) error {
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(result)
@@ -183,6 +213,35 @@ func WriteBool(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Ab
 	}
 
 	return ptr, free, nil
+}
+
+func WriteParameterBool(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+	// Initialize return values
+	args = []uint32{}
+	freeCallbacks := []AbiFreeCallback{}
+	free = wrapFreeCallbacks(&freeCallbacks)
+
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return args, free, errors.New("must pass a valid boolean pointer value")
+	}
+
+	// Validate that the value is a boolean type
+	if rv.Kind() != reflect.Bool {
+		return args, free, fmt.Errorf("cannot write bool from: %s", rv.Kind())
+	}
+
+	// Append the boolean value as an argument
+	if rv.Bool() {
+		args = append(args, 1)
+	} else {
+		args = append(args, 0)
+	}
+	return args, free, nil
 }
 
 var CANONICAL_FLOAT32_NAN = []byte{0x7f, 0xc0, 0x00, 0x00}
@@ -295,4 +354,35 @@ func WriteFloat(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free A
 	}
 
 	return ptr, free, nil
+}
+
+func WriteParameterFloat(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+	// Initialize return values
+	args = []uint32{}
+	freeCallbacks := []AbiFreeCallback{}
+	free = wrapFreeCallbacks(&freeCallbacks)
+
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return args, free, errors.New("must pass a valid float pointer value")
+	}
+
+	// Validate that the value is a float type
+	if rv.Kind() != reflect.Float32 && rv.Kind() != reflect.Float64 {
+		return args, free, fmt.Errorf("cannot write float from: %s", rv.Kind())
+	}
+
+	// Append the float value as an argument
+	if rv.Kind() == reflect.Float32 {
+		args = append(args, math.Float32bits(float32(rv.Float())))
+	} else if rv.Kind() == reflect.Float64 {
+		// TODO: Fix trucation of byte size
+		args = append(args, uint32(math.Float64bits(rv.Float())))
+	}
+
+	return args, free, nil
 }

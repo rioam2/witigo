@@ -94,16 +94,13 @@ func WriteList(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Ab
 		freeCallbacks = append(freeCallbacks, freeList)
 	}
 
-	// Allocate memory for the list data
-	listLength := uint32(rv.Len())
-	elemType := rv.Type().Elem()
-	elemSize := SizeOf(reflect.Zero(elemType).Interface())
-	elemAlignment := AlignmentOf(reflect.Zero(elemType).Interface())
-	listDataPtr, listDataFree, err := abi_malloc(opts, elemSize*listLength, elemAlignment)
+	listDataArgs, freeList, err := WriteParameterList(opts, value)
 	if err != nil {
-		return ptr, free, fmt.Errorf("failed to allocate memory for list data: %w", err)
+		return ptr, free, fmt.Errorf("failed to write list data: %w", err)
 	}
-	freeCallbacks = append(freeCallbacks, listDataFree)
+	freeCallbacks = append(freeCallbacks, freeList)
+	listDataPtr := listDataArgs[0]
+	listLength := listDataArgs[1]
 
 	// Write list header (data pointer and length)
 	if !opts.Memory.WriteUint32Le(ptr, listDataPtr) {
@@ -114,16 +111,48 @@ func WriteList(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free Ab
 		return ptr, free, fmt.Errorf("failed to write list length at %d", ptr+4)
 	}
 
+	return ptr, free, nil
+}
+
+func WriteParameterList(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
+	// Initialize return values
+	args = []uint32{}
+	freeCallbacks := []AbiFreeCallback{}
+	free = wrapFreeCallbacks(&freeCallbacks)
+
+	// Validate input and retrieve element type of value
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() || rv.Kind() != reflect.Slice {
+		return args, free, errors.New("must pass a valid slice pointer value")
+	}
+
+	// Allocate memory for the list data
+	listLength := uint32(rv.Len())
+	elemType := rv.Type().Elem()
+	elemSize := SizeOf(reflect.Zero(elemType).Interface())
+	elemAlignment := AlignmentOf(reflect.Zero(elemType).Interface())
+	listDataPtr, listDataFree, err := abi_malloc(opts, elemSize*listLength, elemAlignment)
+	if err != nil {
+		return args, free, fmt.Errorf("failed to allocate memory for list data: %w", err)
+	}
+	freeCallbacks = append(freeCallbacks, listDataFree)
+
 	// Write each element to memory
-	for i := uint32(0); i < listLength; i++ {
-		elemPtr := ptr + i*elemSize
+	for i := range listLength {
+		elemPtr := listDataPtr + i*elemSize
 		_, elemFree, err := Write(opts, rv.Index(int(i)).Interface(), &elemPtr)
 		freeCallbacks = append(freeCallbacks, elemFree)
 
 		if err != nil {
-			return ptr, free, fmt.Errorf("failed to write element %d: %w", i, err)
+			return args, free, fmt.Errorf("failed to write element %d: %w", i, err)
 		}
 	}
 
-	return ptr, free, nil
+	args = append(args, listDataPtr)
+	args = append(args, listLength)
+
+	return args, free, nil
 }

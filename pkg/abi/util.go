@@ -41,6 +41,8 @@ func Read(opts AbiOptions, ptr uint32, result any) error {
 		structName := rv.Type().Name()
 		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
 			return ReadRecord(opts, ptr, result)
+		} else if len(structName) >= 6 && structName[:6] == "Option" {
+			return ReadOption(opts, ptr, result)
 		} else {
 			return fmt.Errorf("reading struct %s is not implemented", structName)
 		}
@@ -77,6 +79,8 @@ func Write(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFre
 		structName := rv.Type().Name()
 		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
 			return WriteRecord(opts, value, ptrHint)
+		} else if len(structName) >= 6 && structName[:6] == "Option" {
+			return WriteOption(opts, value, ptrHint)
 		} else {
 			return 0, AbiFreeCallbackNoop, fmt.Errorf("writing struct %s is not implemented", structName)
 		}
@@ -86,7 +90,7 @@ func Write(opts AbiOptions, value any, ptrHint *uint32) (ptr uint32, free AbiFre
 }
 
 // WriteParameter writes a parameter value to memory and returns the arguments for the ABI call.
-func WriteParameter(opts AbiOptions, value any, ptrHint *uint32) (args []uint32, free AbiFreeCallback, err error) {
+func WriteParameter(opts AbiOptions, value any) (args []uint32, free AbiFreeCallback, err error) {
 	// Validate input and retrieve element type of value
 	rv := reflect.ValueOf(value)
 	if rv.Kind() == reflect.Ptr {
@@ -98,24 +102,26 @@ func WriteParameter(opts AbiOptions, value any, ptrHint *uint32) (args []uint32,
 
 	// Write based on the kind of the value
 	switch rv.Kind() {
-	// case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-	// 	reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-	// 	return WriteParameterInt(opts, value, ptrHint)
-	// case reflect.Bool:
-	// 	return WriteParameterBool(opts, value, ptrHint)
-	// case reflect.Float32, reflect.Float64:
-	// 	return WriteParameterFloat(opts, value, ptrHint)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return WriteParameterInt(opts, value)
+	case reflect.Bool:
+		return WriteParameterBool(opts, value)
+	case reflect.Float32, reflect.Float64:
+		return WriteParameterFloat(opts, value)
 	case reflect.String:
-		return WriteParameterString(opts, value, ptrHint)
-	// case reflect.Slice:
-	// 	return WriteParameterList(opts, value, ptrHint)
-	// case reflect.Struct:
-	// 	structName := rv.Type().Name()
-	// 	if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
-	// 		return WriteParameterRecord(opts, value, ptrHint)
-	// 	} else {
-	// 		return nil, AbiFreeCallbackNoop, fmt.Errorf("writing struct %s is not implemented", structName)
-	// 	}
+		return WriteParameterString(opts, value)
+	case reflect.Slice:
+		return WriteParameterList(opts, value)
+	case reflect.Struct:
+		structName := rv.Type().Name()
+		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
+			return WriteParameterRecord(opts, value)
+		} else if len(structName) >= 6 && structName[:6] == "Option" {
+			return WriteParameterOption(opts, value)
+		} else {
+			return nil, AbiFreeCallbackNoop, fmt.Errorf("writing struct %s is not implemented", structName)
+		}
 	default:
 		return nil, AbiFreeCallbackNoop, fmt.Errorf("unsupported kind: %s", rv.Kind())
 	}
@@ -157,6 +163,16 @@ func SizeOf(value any) uint32 {
 			}
 			recordAlignment := AlignmentOf(value)
 			return AlignTo(size, recordAlignment)
+		} else if len(structName) >= 6 && structName[:6] == "Option" {
+			numFields := rv.NumField()
+			if numFields != 2 {
+				panic(fmt.Errorf("Option type must contain only discriminant and value fields"))
+			}
+			discriminantRv := rv.Field(0)
+			valueRv := rv.Field(1)
+			valueAlignment := AlignmentOf(valueRv.Interface())
+			totalSize := SizeOf(discriminantRv.Interface()) + SizeOf(valueRv.Interface())
+			return AlignTo(totalSize, valueAlignment)
 		} else {
 			panic(fmt.Errorf("size of struct %s is not implemented", structName))
 		}
@@ -191,6 +207,14 @@ func AlignmentOf(value any) uint32 {
 					alignment = fieldAlignment
 				}
 			}
+			return alignment
+		} else if len(structName) >= 6 && structName[:6] == "Option" {
+			numFields := rv.NumField()
+			if numFields != 2 {
+				panic(fmt.Errorf("Option type must contain only discriminant and value fields"))
+			}
+			valueRv := rv.Field(1)
+			alignment := AlignmentOf(valueRv.Interface())
 			return alignment
 		} else {
 			panic(fmt.Errorf("alignment of struct %s is not implemented", structName))
