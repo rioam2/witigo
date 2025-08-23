@@ -97,3 +97,35 @@ func WriteIndirectParameters(opts AbiOptions, params ...Parameter) (ptr uint64, 
 
 	return ptr, free, nil
 }
+
+func WriteParameters(opts AbiOptions, values ...any) (flatParams []uint64, free AbiFreeCallback, err error) {
+	// Initialize return values
+	flatParams = []uint64{}
+	params := []Parameter{}
+	freeCallbacks := []AbiFreeCallback{}
+	free = wrapFreeCallbacks(&freeCallbacks)
+
+	for i, value := range values {
+		currentParams, freeCurrentParams, err := WriteParameter(opts, value)
+		if err != nil {
+			return flatParams, free, fmt.Errorf("failed to write parameter %d: %w", i, err)
+		}
+		params = append(params, currentParams...)
+		freeCallbacks = append(freeCallbacks, freeCurrentParams)
+	}
+	if len(params) > MAX_FLAT_PARAMS {
+		flatParam, flatParamFree, err := WriteIndirectParameters(opts, params...)
+		if err != nil {
+			return flatParams, free, fmt.Errorf("failed to write indirect parameters: %w", err)
+		}
+		freeCallbacks = append(freeCallbacks, flatParamFree)
+		flatParams = append(flatParams, flatParam)
+		return flatParams, free, nil
+	} else {
+		flatParams = make([]uint64, len(params))
+		for i := range params {
+			flatParams[i] = params[i].Value
+		}
+		return flatParams, free, nil
+	}
+}
