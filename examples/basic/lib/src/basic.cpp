@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include "bindings/basic_example.c"
 #include "bindings/basic_example.h"
@@ -19,6 +20,20 @@ void exports_basic_example_record_func(basic_example_customer_t* input,
   exports_basic_example_string_func(&input->name, &ret->name);
 }
 
+void exports_basic_example_nested_record_func(basic_example_nested_t* input,
+                                              basic_example_nested_t* ret) {
+  exports_basic_example_record_func(&input->customer, &ret->customer);
+}
+
+void exports_basic_example_simple_record_func(
+    basic_example_simple_record_t* input,
+    basic_example_simple_record_t* ret) {
+  ret->id = input->id + 1;  // Example transformation
+}
+
+void exports_basic_example_big_record_func(basic_example_big_record_t* input,
+                                           basic_example_big_record_t* ret) {}
+
 void exports_basic_example_tuple_func(basic_example_tuple2_string_u32_t* input,
                                       basic_example_tuple2_string_u32_t* ret) {
   exports_basic_example_string_func(&input->f0, &ret->f0);
@@ -27,9 +42,11 @@ void exports_basic_example_tuple_func(basic_example_tuple2_string_u32_t* input,
 
 void exports_basic_example_list_func(basic_example_list_u64_t* input,
                                      basic_example_list_u64_t* ret) {
-  ret->len = input->len;
-  ret->ptr = (uint64_t*)realloc(ret->ptr, input->len * sizeof(uint64_t));
-  memcpy(ret->ptr, input->ptr, input->len * sizeof(uint64_t));
+  std::vector<uint64_t> transformed_list(input->ptr, input->ptr + input->len);
+  transformed_list.push_back(99);
+  ret->len = transformed_list.size();
+  ret->ptr = (uint64_t*)realloc(ret->ptr, ret->len * sizeof(ret->ptr[0]));
+  memcpy(ret->ptr, transformed_list.data(), ret->len * sizeof(ret->ptr[0]));
 }
 
 bool exports_basic_example_option_func(uint64_t* maybe_input, uint64_t* ret) {
@@ -84,4 +101,15 @@ basic_example_color_t exports_basic_example_enum_func(
       // Handle unexpected values gracefully
       return BASIC_EXAMPLE_COLOR_HOT_PINK;  // Default case
   }
+}
+
+int64_t exports_basic_example_int64_func(int64_t input) {
+  // Example transformation: simply return the input incremented by 1
+  return input + 1;
+}
+
+void exports_basic_example_no_return_func(bool) {
+  // This function intentionally does nothing and has no return value.
+  // It can be used to demonstrate a function that performs an action
+  // without returning any data.
 }

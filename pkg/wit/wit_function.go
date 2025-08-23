@@ -2,6 +2,7 @@ package wit
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 type WitFunction interface {
@@ -66,13 +67,21 @@ func (w *WitFunctionImpl) String() string {
 }
 
 func (w *WitFunctionImpl) ReferencesType(t WitType) bool {
+	testTypeString := t.String()
+
 	for _, param := range w.Params() {
-		if param.Type().String() == t.String() && param.Type().Kind() == t.Kind() {
+		paramTypeString := param.Type().String()
+		if paramTypeString != "" && strings.Contains(paramTypeString, testTypeString) {
 			return true
 		}
 	}
-	if w.Returns().String() == t.String() && w.Returns().Kind() == t.Kind() {
-		return true
+
+	if w.Returns() != nil {
+		returnTypeString := w.Returns().String()
+		if returnTypeString != "" && strings.Contains(returnTypeString, testTypeString) {
+			return true
+		}
 	}
+
 	return false
 }

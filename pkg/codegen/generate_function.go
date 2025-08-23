@@ -3,49 +3,64 @@ package codegen
 import (
 	"github.com/golang-cz/textcase"
 	"github.com/moznion/gowrtr/generator"
-	witigo "github.com/rioam2/witigo/pkg"
 	"github.com/rioam2/witigo/pkg/wit"
 )
 
 func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *generator.Func {
+	var parameterList string = ""
+	for idx, param := range w.Params() {
+		if idx > 0 {
+			parameterList += ", "
+		}
+		parameterList += textcase.CamelCase(param.Name())
+	}
 	fn := generator.NewFunc(
 		receiver,
 		GenerateSignatureFromFunction(w),
 	)
-	fn = fn.AddStatements(generator.NewRawStatementf("var args []uint64"))
-	fn = fn.AddStatements(generator.NewRawStatementf("var result %s", GenerateTypenameFromType(w.Returns())))
-	for idx, param := range w.Params() {
-		switch param.Type().Kind() {
-		case witigo.AbiTypeString:
-			fn = fn.AddStatements(
-				generator.NewRawStatementf("arg%02dPtr, arg%02dSize, arg%02dUnits, err := abi.WriteString(i.abiOpts, %s)", idx, idx, idx, textcase.CamelCase(param.Name())),
-				generator.NewRawStatementf("if err != nil {"),
-				generator.NewRawStatementf("  panic(fmt.Errorf(\"failed to write string: %%w\", err))"),
-				generator.NewRawStatementf("}"),
-				generator.NewRawStatementf("defer abi.FreeString(i.abiOpts, arg%02dPtr, arg%02dSize)", idx, idx),
-				generator.NewRawStatementf("args = append(args, uint64(arg%02dPtr), uint64(arg%02dUnits))", idx, idx),
-			)
-		default:
-			fn = fn.AddStatements(
-				generator.NewRawStatementf("_ = args"),
-			)
-		}
-	}
-	switch w.Returns().Kind() {
-	case witigo.AbiTypeString:
+	fn = fn.AddStatements(generator.NewRawStatementf("var params []uint64"))
+	if w.Returns() == nil {
 		fn = fn.AddStatements(
-			generator.NewRawStatementf("ret, postReturn, err := abi.Call(i.abiOpts, \"%s\", args...)", textcase.KebabCase(w.Name())),
+			generator.NewRawStatementf("params, freeParams, err := abi.WriteParameters(i.abiOpts, %s)", parameterList),
 			generator.NewRawStatementf("if err != nil {"),
-			generator.NewRawStatementf("  panic(fmt.Errorf(\"failed to call %s: %%w\", err))", textcase.KebabCase(w.Name())),
+			generator.NewRawStatementf("  return fmt.Errorf(\"failed to write parameters: %%w\", err)"),
 			generator.NewRawStatementf("}"),
-			generator.NewRawStatementf("defer postReturn()"),
-			generator.NewRawStatementf("result, err = abi.ReadString(i.abiOpts, ret)"),
+			generator.NewRawStatementf("defer freeParams()"),
+			generator.NewRawStatementf("_, postReturn, err := abi.Call(i.abiOpts, \"%s\", params...)", textcase.KebabCase(w.Name())),
 			generator.NewRawStatementf("if err != nil {"),
-			generator.NewRawStatementf("  panic(fmt.Errorf(\"failed to read string result: %%w\", err))"),
+			generator.NewRawStatementf("  return fmt.Errorf(\"failed to call %s: %%w\", err)", textcase.KebabCase(w.Name())),
+			generator.NewRawStatementf("}"),
+		)
+	} else {
+		fn = fn.AddStatements(
+			generator.NewRawStatementf("var result %s", GenerateTypenameFromType(w.Returns())),
+			generator.NewRawStatementf("params, freeParams, err := abi.WriteParameters(i.abiOpts, %s)", parameterList),
+			generator.NewRawStatementf("if err != nil {"),
+			generator.NewRawStatementf("  return result, fmt.Errorf(\"failed to write parameters: %%w\", err)"),
+			generator.NewRawStatementf("}"),
+			generator.NewRawStatementf("defer freeParams()"),
+			generator.NewRawStatementf("ret, postReturn, err := abi.Call(i.abiOpts, \"%s\", params...)", textcase.KebabCase(w.Name())),
+			generator.NewRawStatementf("if err != nil {"),
+			generator.NewRawStatementf("  return result, fmt.Errorf(\"failed to call %s: %%w\", err)", textcase.KebabCase(w.Name())),
 			generator.NewRawStatementf("}"),
 		)
 	}
-	fn = fn.AddStatements(generator.NewRawStatement("return result"))
+	fn = fn.AddStatements(
+		generator.NewRawStatementf("defer postReturn()"),
+	)
+	if w.Returns() != nil {
+		fn = fn.AddStatements(
+			generator.NewRawStatementf("err = abi.Read(i.abiOpts, ret, &result)"),
+			generator.NewRawStatementf("if err != nil {"),
+			generator.NewRawStatementf("  return result, fmt.Errorf(\"failed to read result: %%w\", err)"),
+			generator.NewRawStatementf("}"),
+		)
+	}
+	if w.Returns() == nil {
+		fn = fn.AddStatements(generator.NewRawStatement("return nil"))
+	} else {
+		fn = fn.AddStatements(generator.NewRawStatement("return result, nil"))
+	}
 	return fn
 }
 
@@ -57,7 +72,11 @@ func GenerateSignatureFromFunction(w wit.WitFunction) *generator.FuncSignature {
 			GenerateTypenameFromType(param.Type()),
 		)
 	}
-	return generator.NewFuncSignature(textcase.PascalCase(w.Name())).
-		AddParameters(parameters...).
-		AddReturnTypes(GenerateTypenameFromType(w.Returns()))
+	signature := generator.NewFuncSignature(textcase.PascalCase(w.Name())).
+		AddParameters(parameters...)
+	if w.Returns() != nil {
+		signature = signature.AddReturnTypes(GenerateTypenameFromType(w.Returns()))
+	}
+	signature = signature.AddReturnTypes("error")
+	return signature
 }

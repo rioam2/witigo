@@ -103,7 +103,7 @@ func generateOptionTypenameFromType(w wit.WitType) string {
 	if subType == nil {
 		panic("Option type must have a subtype")
 	}
-	return "*" + GenerateTypenameFromType(subType.Type())
+	return "Option[" + GenerateTypenameFromType(subType.Type()) + "]"
 }
 
 func generateListTypenameFromType(w wit.WitType) string {

@@ -44,7 +44,6 @@ func GenerateFromWorld(w wit.WitWorldDefinition, packageName string) *generator.
 		generator.NewStruct("Instance").
 			AddField("runtime", "wazero.Runtime").
 			AddField("module", "api.Module").
-			AddField("memory", "api.Memory").
 			AddField("abiOpts", "abi.AbiOptions").
 			AddField("ctx", contextType),
 		generator.NewNewline(),
@@ -69,17 +68,13 @@ func GenerateFromWorld(w wit.WitWorldDefinition, packageName string) *generator.
 				generator.NewRawStatement("if err != nil {"),
 				generator.NewRawStatement("  return nil, fmt.Errorf(\"failed to instantiate module: %w\", err)"),
 				generator.NewRawStatement("}"),
-				generator.NewRawStatement("memory := module.ExportedMemory(\"memory\")"),
-				generator.NewRawStatement("if memory == nil {"),
-				generator.NewRawStatement("  return nil, fmt.Errorf(\"module does not export memory named 'memory'\")"),
-				generator.NewRawStatement("}"),
 				generator.NewRawStatement("abiOpts := abi.AbiOptions{"),
 				generator.NewRawStatement("  StringEncoding: abi.StringEncodingUTF8,"),
-				generator.NewRawStatement("  Memory: memory,"),
+				generator.NewRawStatement("  Memory: abi.GetRuntimeMemoryFromWazero(module),"),
 				generator.NewRawStatement("  Context: ctx,"),
-				generator.NewRawStatement("  Func: module.ExportedFunction,"),
+				generator.NewRawStatement("  Call: abi.GetRuntimeCallFromWazero(module),"),
 				generator.NewRawStatement("}"),
-				generator.NewRawStatement("return &Instance{runtime: r, module: module, memory: memory, ctx: ctx, abiOpts: abiOpts}, nil"),
+				generator.NewRawStatement("return &Instance{runtime: r, module: module, ctx: ctx, abiOpts: abiOpts}, nil"),
 			),
 		generator.NewNewline(),
 		generator.NewFunc(
@@ -89,6 +84,15 @@ func GenerateFromWorld(w wit.WitWorldDefinition, packageName string) *generator.
 				AddReturnTypes("error"),
 			generator.NewRawStatement("return i.module.Close(ctx)"),
 		),
+	)
+
+	// Add static type declaration for Option types
+	root = root.AddStatements(
+		generator.NewRawStatement("type Option[T any] struct {"),
+		generator.NewRawStatement("	IsSome bool"),
+		generator.NewRawStatement("	Value  T"),
+		generator.NewRawStatement("}"),
+		generator.NewNewline(),
 	)
 
 	for _, t := range w.Types() {

@@ -59,6 +59,7 @@ func (w *WitTypeImpl) Kind() witigo.AbiType {
 			Enum    *json.RawMessage `json:"enum"`
 			Type    *json.RawMessage `json:"type"`
 			Handle  *json.RawMessage `json:"handle"`
+			Flags   *json.RawMessage `json:"flags"`
 		} `json:"kind"`
 		Type *string `json:"type"`
 	}
@@ -128,7 +129,10 @@ func (w *WitTypeImpl) Kind() witigo.AbiType {
 	if dataVer2.Kind.Handle != nil {
 		return witigo.AbiTypeHandle
 	}
-	panic(fmt.Sprintf("Unknown WIT type kind: %v", dataVer2.Kind))
+	if dataVer2.Kind.Flags != nil {
+		return witigo.AbiTypeFlags
+	}
+	panic(fmt.Sprintf("Unknown WIT type kind: %v\n%v", dataVer2.Kind, string(w.Raw)))
 }
 
 func (w *WitTypeImpl) Owner() *string {
