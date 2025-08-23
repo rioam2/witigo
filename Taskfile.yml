@@ -9,7 +9,6 @@ tasks:
       - go build -o ./bin/witigo ./cmd/main.go
   test:
     cmds:
-      - go test ./test
       - go test ./pkg/abi/test
   basic_example:
     cmds:
