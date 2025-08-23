@@ -71,7 +71,7 @@ func WriteIndirectParameters(opts AbiOptions, params ...Parameter) (ptr uint64, 
 	}
 
 	// Allocate space for the indirect parameters in linear memory
-	paramListPtr, paramListFree, err := abi_malloc(opts, paramListSize, paramListAlignment)
+	paramListPtr, paramListFree, err := abiMalloc(opts, paramListSize, paramListAlignment)
 	if err != nil {
 		return ptr, free, err
 	}

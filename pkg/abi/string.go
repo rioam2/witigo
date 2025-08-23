@@ -110,7 +110,7 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free 
 		ptr = AlignTo(*ptrHint, alignment)
 	} else {
 		var freeString AbiFreeCallback
-		ptr, freeString, err = abi_malloc(opts, size, alignment)
+		ptr, freeString, err = abiMalloc(opts, size, alignment)
 		if err != nil {
 			return ptr, free, err
 		}
@@ -184,7 +184,7 @@ func WriteParameterString(opts AbiOptions, value any) (params []Parameter, free 
 	}
 
 	// Allocate memory for the string data
-	strDataPtr, strFree, err := abi_malloc(opts, strByteLength, strAlignment)
+	strDataPtr, strFree, err := abiMalloc(opts, strByteLength, strAlignment)
 	if err != nil {
 		return params, free, err
 	}

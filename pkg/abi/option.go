@@ -75,7 +75,7 @@ func WriteOption(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free 
 		ptr = AlignTo(*ptrHint, alignment)
 	} else {
 		var freeOption AbiFreeCallback
-		ptr, freeOption, err = abi_malloc(opts, size, alignment)
+		ptr, freeOption, err = abiMalloc(opts, size, alignment)
 		if err != nil {
 			return ptr, free, err
 		}
