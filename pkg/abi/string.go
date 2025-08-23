@@ -122,8 +122,8 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free 
 	if err != nil {
 		return ptr, free, err
 	}
-	strDataPtr := params[0]
-	strDataLen := params[1]
+	strDataPtr := params[0].Value
+	strDataLen := params[1].Value
 
 	// Write string descriptor to linear memory
 	if ok := opts.Memory.WriteUint32Le(ptr, uint32(strDataPtr)); !ok {
@@ -136,9 +136,9 @@ func WriteString(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free 
 	return ptr, free, nil
 }
 
-func WriteParameterString(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
+func WriteParameterString(opts AbiOptions, value any) (params []Parameter, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint64{}
+	params = []Parameter{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -148,12 +148,12 @@ func WriteParameterString(opts AbiOptions, value any) (args []uint64, free AbiFr
 		rv = rv.Elem()
 	}
 	if !rv.IsValid() {
-		return args, free, errors.New("must pass a valid string pointer value")
+		return params, free, errors.New("must pass a valid string pointer value")
 	}
 
 	// Validate that the value is a string type
 	if rv.Kind() != reflect.String {
-		return args, free, fmt.Errorf("cannot write string from: %s", rv.Kind())
+		return params, free, fmt.Errorf("cannot write string from: %s", rv.Kind())
 	}
 
 	// Get the byte representation of the string
@@ -167,10 +167,10 @@ func WriteParameterString(opts AbiOptions, value any) (args []uint64, free AbiFr
 		encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
 		strData, err = encoder.Bytes([]byte(rv.String()))
 		if err != nil {
-			return args, free, fmt.Errorf("failed to encode string to UTF-16: %w", err)
+			return params, free, fmt.Errorf("failed to encode string to UTF-16: %w", err)
 		}
 	default:
-		return args, free, fmt.Errorf("unsupported string encoding: %s", strEncoding)
+		return params, free, fmt.Errorf("unsupported string encoding: %s", strEncoding)
 	}
 
 	// Get the alignment and size for the string data
@@ -180,23 +180,31 @@ func WriteParameterString(opts AbiOptions, value any) (args []uint64, free AbiFr
 	strByteLength := uint64(len(strData))
 
 	if strByteLength%taggedCodeUnitSize != 0 {
-		return args, free, fmt.Errorf("string data length %d is not a multiple of tagged code unit size %d", strByteLength, taggedCodeUnitSize)
+		return params, free, fmt.Errorf("string data length %d is not a multiple of tagged code unit size %d", strByteLength, taggedCodeUnitSize)
 	}
 
 	// Allocate memory for the string data
 	strDataPtr, strFree, err := abi_malloc(opts, strByteLength, strAlignment)
 	if err != nil {
-		return args, free, err
+		return params, free, err
 	}
 	freeCallbacks = append(freeCallbacks, strFree)
 
 	// Write the string data to memory
 	if !opts.Memory.Write(strDataPtr, strData) {
-		return args, free, fmt.Errorf("failed to write string data at %d", strDataPtr)
+		return params, free, fmt.Errorf("failed to write string data at %d", strDataPtr)
 	}
 
-	args = append(args, strDataPtr)
-	args = append(args, strCodeUnits)
+	params = append(params, Parameter{
+		Value:     strDataPtr,
+		Size:      4,
+		Alignment: 4,
+	})
+	params = append(params, Parameter{
+		Value:     strCodeUnits,
+		Size:      4,
+		Alignment: 4,
+	})
 
-	return args, free, nil
+	return params, free, nil
 }

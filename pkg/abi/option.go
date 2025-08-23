@@ -104,16 +104,16 @@ func WriteOption(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free 
 	return ptr, free, nil
 }
 
-func WriteParameterOption(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
+func WriteParameterOption(opts AbiOptions, value any) (params []Parameter, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint64{}
+	params = []Parameter{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
 	// Validate input and retrieve element type of result
 	rv := reflect.ValueOf(value)
 	if rv.Kind() != reflect.Struct && (value == nil || rv.IsZero() || rv.IsNil()) {
-		return args, free, errors.New("must pass a non-nil pointer value")
+		return params, free, errors.New("must pass a non-nil pointer value")
 	}
 	if rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
@@ -122,7 +122,7 @@ func WriteParameterOption(opts AbiOptions, value any) (args []uint64, free AbiFr
 	// Check if the result is an Option type
 	structName := rv.Type().Name()
 	if rv.Kind() != reflect.Struct || len(structName) < 6 || structName[:6] != "Option" {
-		return args, free, fmt.Errorf("expected Option type, got %s", structName)
+		return params, free, fmt.Errorf("expected Option type, got %s", structName)
 	}
 
 	discriminant := rv.Field(0).Bool()
@@ -134,11 +134,20 @@ func WriteParameterOption(opts AbiOptions, value any) (args []uint64, free AbiFr
 	valueParams, valueFree, err := WriteParameter(opts, valueInterface)
 	freeCallbacks = append(freeCallbacks, valueFree)
 	if err != nil {
-		return args, free, err
+		return params, free, err
 	}
 
-	args = append(args, discriminantUint)
-	args = append(args, valueParams...)
+	discriminantAlignment := uint64(1)
+	if len(valueParams) > 0 && valueParams[0].Alignment > discriminantAlignment {
+		discriminantAlignment = valueParams[0].Alignment
+	}
 
-	return args, free, nil
+	params = append(params, Parameter{
+		Value:     discriminantUint,
+		Size:      1,
+		Alignment: discriminantAlignment,
+	})
+	params = append(params, valueParams...)
+
+	return params, free, nil
 }

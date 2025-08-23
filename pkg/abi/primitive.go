@@ -110,9 +110,9 @@ func WriteInt(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free Abi
 	return ptr, free, nil
 }
 
-func WriteParameterInt(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
+func WriteParameterInt(opts AbiOptions, value any) (params []Parameter, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint64{}
+	params = []Parameter{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -122,20 +122,28 @@ func WriteParameterInt(opts AbiOptions, value any) (args []uint64, free AbiFreeC
 		rv = rv.Elem()
 	}
 	if !rv.IsValid() {
-		return args, free, errors.New("must pass a valid int/uint pointer value")
+		return params, free, errors.New("must pass a valid int/uint pointer value")
 	}
 
 	// Validate that the value is an integer or unsigned integer type
 	if !rv.CanUint() && !rv.CanInt() {
-		return args, free, fmt.Errorf("cannot write int/uint from: %s", rv.Kind())
+		return params, free, fmt.Errorf("cannot write int/uint from: %s", rv.Kind())
 	}
 
 	if rv.CanUint() {
-		args = append(args, (rv.Uint()))
+		params = append(params, Parameter{
+			Value:     rv.Uint(),
+			Size:      SizeOf(value),
+			Alignment: AlignmentOf(value),
+		})
 	} else if rv.CanInt() {
-		args = append(args, uint64(rv.Int()))
+		params = append(params, Parameter{
+			Value:     uint64(rv.Int()),
+			Size:      SizeOf(value),
+			Alignment: AlignmentOf(value),
+		})
 	}
-	return args, free, nil
+	return params, free, nil
 }
 
 func ReadBool(opts AbiOptions, ptr uint64, result any) error {
@@ -213,9 +221,9 @@ func WriteBool(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free Ab
 	return ptr, free, nil
 }
 
-func WriteParameterBool(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
+func WriteParameterBool(opts AbiOptions, value any) (params []Parameter, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint64{}
+	params = []Parameter{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -225,21 +233,29 @@ func WriteParameterBool(opts AbiOptions, value any) (args []uint64, free AbiFree
 		rv = rv.Elem()
 	}
 	if !rv.IsValid() {
-		return args, free, errors.New("must pass a valid boolean pointer value")
+		return params, free, errors.New("must pass a valid boolean pointer value")
 	}
 
 	// Validate that the value is a boolean type
 	if rv.Kind() != reflect.Bool {
-		return args, free, fmt.Errorf("cannot write bool from: %s", rv.Kind())
+		return params, free, fmt.Errorf("cannot write bool from: %s", rv.Kind())
 	}
 
 	// Append the boolean value as an argument
 	if rv.Bool() {
-		args = append(args, 1)
+		params = append(params, Parameter{
+			Value:     1,
+			Size:      SizeOf(value),
+			Alignment: AlignmentOf(value),
+		})
 	} else {
-		args = append(args, 0)
+		params = append(params, Parameter{
+			Value:     0,
+			Size:      SizeOf(value),
+			Alignment: AlignmentOf(value),
+		})
 	}
-	return args, free, nil
+	return params, free, nil
 }
 
 var CANONICAL_FLOAT32_NAN = []byte{0x7f, 0xc0, 0x00, 0x00}
@@ -355,9 +371,9 @@ func WriteFloat(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free A
 }
 
 // TODO: write some tests for this fn
-func WriteParameterFloat(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
+func WriteParameterFloat(opts AbiOptions, value any) (params []Parameter, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint64{}
+	params = []Parameter{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -367,20 +383,28 @@ func WriteParameterFloat(opts AbiOptions, value any) (args []uint64, free AbiFre
 		rv = rv.Elem()
 	}
 	if !rv.IsValid() {
-		return args, free, errors.New("must pass a valid float pointer value")
+		return params, free, errors.New("must pass a valid float pointer value")
 	}
 
 	// Validate that the value is a float type
 	if rv.Kind() != reflect.Float32 && rv.Kind() != reflect.Float64 {
-		return args, free, fmt.Errorf("cannot write float from: %s", rv.Kind())
+		return params, free, fmt.Errorf("cannot write float from: %s", rv.Kind())
 	}
 
 	// Append the float value as an argument
 	if rv.Kind() == reflect.Float32 {
-		args = append(args, uint64(math.Float32bits(float32(rv.Float()))))
+		params = append(params, Parameter{
+			Value:     uint64(math.Float32bits(float32(rv.Float()))),
+			Size:      SizeOf(value),
+			Alignment: AlignmentOf(value),
+		})
 	} else if rv.Kind() == reflect.Float64 {
-		args = append(args, uint64(math.Float64bits(rv.Float())))
+		params = append(params, Parameter{
+			Value:     uint64(math.Float64bits(rv.Float())),
+			Size:      SizeOf(value),
+			Alignment: AlignmentOf(value),
+		})
 	}
 
-	return args, free, nil
+	return params, free, nil
 }

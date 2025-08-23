@@ -123,9 +123,9 @@ func WriteRecord(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free 
 	return ptr, free, nil
 }
 
-func WriteParameterRecord(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
+func WriteParameterRecord(opts AbiOptions, value any) (params []Parameter, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint64{}
+	params = []Parameter{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -135,12 +135,12 @@ func WriteParameterRecord(opts AbiOptions, value any) (args []uint64, free AbiFr
 		rv = rv.Elem()
 	}
 	if !rv.IsValid() {
-		return nil, free, errors.New("must pass a valid struct pointer value")
+		return params, free, errors.New("must pass a valid struct pointer value")
 	}
 
 	// Write based on the kind of the value
 	if rv.Kind() != reflect.Struct {
-		return nil, free, fmt.Errorf("value must be a struct, got %s", rv.Kind())
+		return params, free, fmt.Errorf("value must be a struct, got %s", rv.Kind())
 	}
 
 	for i := 0; i < rv.NumField(); i++ {
@@ -150,8 +150,8 @@ func WriteParameterRecord(opts AbiOptions, value any) (args []uint64, free AbiFr
 		if err != nil {
 			return nil, free, fmt.Errorf("failed to write field %d: %w", i, err)
 		}
-		args = append(args, fieldArgs...)
+		params = append(params, fieldArgs...)
 	}
 
-	return args, free, nil
+	return params, free, nil
 }

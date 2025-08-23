@@ -99,8 +99,8 @@ func WriteList(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free Ab
 		return ptr, free, fmt.Errorf("failed to write list data: %w", err)
 	}
 	freeCallbacks = append(freeCallbacks, freeList)
-	listDataPtr := listDataArgs[0]
-	listLength := listDataArgs[1]
+	listDataPtr := listDataArgs[0].Value
+	listLength := listDataArgs[1].Value
 
 	// Write list header (data pointer and length)
 	if !opts.Memory.WriteUint32Le(ptr, uint32(listDataPtr)) {
@@ -114,9 +114,9 @@ func WriteList(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free Ab
 	return ptr, free, nil
 }
 
-func WriteParameterList(opts AbiOptions, value any) (args []uint64, free AbiFreeCallback, err error) {
+func WriteParameterList(opts AbiOptions, value any) (params []Parameter, free AbiFreeCallback, err error) {
 	// Initialize return values
-	args = []uint64{}
+	params = []Parameter{}
 	freeCallbacks := []AbiFreeCallback{}
 	free = wrapFreeCallbacks(&freeCallbacks)
 
@@ -126,7 +126,7 @@ func WriteParameterList(opts AbiOptions, value any) (args []uint64, free AbiFree
 		rv = rv.Elem()
 	}
 	if !rv.IsValid() || rv.Kind() != reflect.Slice {
-		return args, free, errors.New("must pass a valid slice pointer value")
+		return params, free, errors.New("must pass a valid slice pointer value")
 	}
 
 	// Allocate memory for the list data
@@ -136,7 +136,7 @@ func WriteParameterList(opts AbiOptions, value any) (args []uint64, free AbiFree
 	elemAlignment := AlignmentOf(reflect.Zero(elemType).Interface())
 	listDataPtr, listDataFree, err := abi_malloc(opts, elemSize*listLength, elemAlignment)
 	if err != nil {
-		return args, free, fmt.Errorf("failed to allocate memory for list data: %w", err)
+		return params, free, fmt.Errorf("failed to allocate memory for list data: %w", err)
 	}
 	freeCallbacks = append(freeCallbacks, listDataFree)
 
@@ -147,12 +147,20 @@ func WriteParameterList(opts AbiOptions, value any) (args []uint64, free AbiFree
 		freeCallbacks = append(freeCallbacks, elemFree)
 
 		if err != nil {
-			return args, free, fmt.Errorf("failed to write element %d: %w", i, err)
+			return params, free, fmt.Errorf("failed to write element %d: %w", i, err)
 		}
 	}
 
-	args = append(args, listDataPtr)
-	args = append(args, listLength)
+	params = append(params, Parameter{
+		Value:     listDataPtr,
+		Size:      4,
+		Alignment: 4,
+	})
+	params = append(params, Parameter{
+		Value:     listLength,
+		Size:      4,
+		Alignment: 4,
+	})
 
-	return args, free, nil
+	return params, free, nil
 }
