@@ -39,9 +39,9 @@ func Read(opts AbiOptions, ptr uint64, result any) error {
 		return ReadList(opts, ptr, result)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
+		if isStructRecordType(rv) {
 			return ReadRecord(opts, ptr, result)
-		} else if len(structName) >= 6 && structName[:6] == "Option" {
+		} else if isStructOptionType(rv) {
 			return ReadOption(opts, ptr, result)
 		} else {
 			return fmt.Errorf("reading struct %s is not implemented", structName)
@@ -77,9 +77,9 @@ func Write(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFre
 		return WriteList(opts, value, ptrHint)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
+		if isStructRecordType(rv) {
 			return WriteRecord(opts, value, ptrHint)
-		} else if len(structName) >= 6 && structName[:6] == "Option" {
+		} else if isStructOptionType(rv) {
 			return WriteOption(opts, value, ptrHint)
 		} else {
 			return 0, AbiFreeCallbackNoop, fmt.Errorf("writing struct %s is not implemented", structName)
@@ -114,7 +114,7 @@ func SizeOf(value any) uint64 {
 		return 8
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
+		if isStructRecordType(rv) {
 			size := uint64(0)
 			for i := 0; i < rv.NumField(); i++ {
 				field := rv.Field(i)
@@ -125,7 +125,7 @@ func SizeOf(value any) uint64 {
 			}
 			recordAlignment := AlignmentOf(value)
 			return AlignTo(size, recordAlignment)
-		} else if len(structName) >= 6 && structName[:6] == "Option" {
+		} else if isStructOptionType(rv) {
 			numFields := rv.NumField()
 			if numFields != 2 {
 				panic(fmt.Errorf("Option type must contain only discriminant and value fields"))
@@ -160,7 +160,7 @@ func AlignmentOf(value any) uint64 {
 		return 8
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
+		if isStructRecordType(rv) {
 			alignment := uint64(1)
 			for i := 0; i < rv.NumField(); i++ {
 				field := rv.Field(i)
@@ -170,7 +170,7 @@ func AlignmentOf(value any) uint64 {
 				}
 			}
 			return alignment
-		} else if len(structName) >= 6 && structName[:6] == "Option" {
+		} else if isStructOptionType(rv) {
 			numFields := rv.NumField()
 			if numFields != 2 {
 				panic(fmt.Errorf("Option type must contain only discriminant and value fields"))
@@ -195,4 +195,20 @@ func wrapFreeCallbacks(freeCallbacks *[]AbiFreeCallback) AbiFreeCallback {
 		}
 		return nil
 	}
+}
+
+func isStructRecordType(rv reflect.Value) bool {
+	if rv.Kind() != reflect.Struct {
+		return false
+	}
+	structName := rv.Type().Name()
+	return len(structName) >= 6 && structName[len(structName)-6:] == "Record"
+}
+
+func isStructOptionType(rv reflect.Value) bool {
+	if rv.Kind() != reflect.Struct {
+		return false
+	}
+	structName := rv.Type().Name()
+	return len(structName) >= 6 && structName[:6] == "Option"
 }

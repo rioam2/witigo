@@ -43,9 +43,9 @@ func WriteParameter(opts AbiOptions, value any) (params []Parameter, free AbiFre
 		return WriteParameterList(opts, value)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if len(structName) >= 6 && structName[len(structName)-6:] == "Record" {
+		if isStructRecordType(rv) {
 			return WriteParameterRecord(opts, value)
-		} else if len(structName) >= 6 && structName[:6] == "Option" {
+		} else if isStructOptionType(rv) {
 			return WriteParameterOption(opts, value)
 		} else {
 			return nil, AbiFreeCallbackNoop, fmt.Errorf("writing struct %s is not implemented", structName)

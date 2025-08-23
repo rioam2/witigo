@@ -119,7 +119,10 @@ func TestWriteParameterOption_None(t *testing.T) {
 	args, free, err := abi.WriteParameterOption(opts, &value)
 	require.NoError(t, err)
 	defer free()
-	assert.Equal(t, []uint64{0, 0}, args)
+	assert.Equal(t, []abi.Parameter{
+		{Value: uint64(0), Size: 0x01, Alignment: 0x04}, // Discriminant
+		{Value: uint64(0), Size: 0x04, Alignment: 0x04}, // Value
+	}, args)
 }
 
 func TestWriteParameterOption_Some(t *testing.T) {
@@ -129,8 +132,8 @@ func TestWriteParameterOption_Some(t *testing.T) {
 	require.NoError(t, err)
 	defer free()
 	assert.Equal(t, 2, len(args))
-	assert.Equal(t, uint64(1), args[0])    // Discriminant
-	assert.Equal(t, uint64(0x42), args[1]) // Value
+	assert.Equal(t, abi.Parameter{Value: 0x01, Size: 0x01, Alignment: 0x04}, args[0]) // Discriminant
+	assert.Equal(t, abi.Parameter{Value: 0x42, Size: 0x04, Alignment: 0x04}, args[1]) // Value
 }
 
 func TestWriteThenReadOptionNone(t *testing.T) {
