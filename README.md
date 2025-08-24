@@ -1,6 +1,10 @@
-# witigo
+<img align="right" src="./docs/witigo-logo.svg" alt="witigo-logo" width="175"/>
+
+# [witigo](https://github.com/rioam2/witigo) &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rioam2/witigo/blob/main/LICENSE) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/rioam2/witigo?tab=readme-ov-file#contributing)
 
 Command line tool and library for generating host bindings in golang for WebAssembly (WASM) Components. This is useful for building applications that consume WebAssembly modules that leverage high-level component types defined in WIT (WebAssembly Interface Types).
+
+---
 
 ## Getting Started
 
@@ -24,6 +28,8 @@ The generated package will include all necessary bindings and types to interact 
 ├── example_component_core.wasm
 └── example_component.go
 ```
+
+---
 
 ## Features and Roadmap
 
@@ -71,9 +77,13 @@ The generated package will include all necessary bindings and types to interact 
   - [ ] Automated releases using Release Please
   - [ ] Publishing prebuilt binaries on Releases
 
+---
+
 ### Contributing
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue for any suggestions or improvements.
+
+---
 
 ### License
 
