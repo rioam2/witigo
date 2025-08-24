@@ -1,6 +1,6 @@
-package examples:basic;
+package examples:all-types;
 
-world basic-example {
+world all-types-example {
     record customer {
         id: u64,
         name: string,

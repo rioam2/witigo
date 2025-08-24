@@ -1,5 +1,5 @@
 {
     "clangd.arguments": [
-        "--compile-commands-dir=${workspaceFolder}/examples/basic/lib/build/wasi",
+        "--compile-commands-dir=${workspaceFolder}/examples/all-types/lib/build/wasi",
     ],
 }

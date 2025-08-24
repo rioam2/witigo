@@ -10,8 +10,8 @@ tasks:
   test:
     cmds:
       - go test ./pkg/abi/test
-  basic_example:
+  all-types-example:
     cmds:
-      - cd ./examples/basic/lib && cmake --workflow --preset wasi
-      - go run ./cmd/main.go generate ./examples/basic/lib/build/wasi/src/basic_example_component.wasm ./examples/basic/generated
-      - go run ./examples/basic/host/main.go
+      - cd ./examples/all-types/lib && cmake --workflow --preset wasi
+      - go run ./cmd/main.go generate ./examples/all-types/lib/build/wasi/src/all_types_example_component.wasm ./examples/all-types/generated
+      - go run ./examples/all-types/main.go
