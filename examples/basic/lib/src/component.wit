@@ -1,0 +1,15 @@
+package examples:basic-example;
+
+world basic-example {
+    record double-operation {
+        double-list: list<f64>,
+        double-string: string,
+    }
+
+    record double-result {
+        doubled-list: list<f64>,
+        doubled-string: string,
+    }
+
+    export double: func (input: double-operation) -> double-result;
+}

@@ -10,6 +10,11 @@ tasks:
   test:
     cmds:
       - go test ./pkg/abi/test
+  basic-example:
+    cmds:
+      - cd ./examples/basic/lib && cmake --workflow --preset wasi
+      - go run ./cmd/main.go generate ./examples/basic/lib/build/wasi/src/basic_example_component.wasm ./examples/basic/generated
+      - go run ./examples/basic/main.go
   all-types-example:
     cmds:
       - cd ./examples/all-types/lib && cmake --workflow --preset wasi

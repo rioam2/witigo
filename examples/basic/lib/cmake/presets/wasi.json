@@ -1,0 +1,36 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "wasi",
+            "displayName": "WebAssembly System Interface (WASI)",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "toolchainFile": "${sourceDir}/cmake/toolchains/wasi-sdk.toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "CMAKE_COMPILE_WARNING_AS_ERROR": true
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "wasi",
+            "configurePreset": "wasi"
+        }
+    ],
+    "workflowPresets": [
+        {
+            "name": "wasi",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "wasi"
+                },
+                {
+                    "type": "build",
+                    "name": "wasi"
+                }
+            ]
+        }
+    ]
+}
