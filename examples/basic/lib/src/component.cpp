@@ -21,15 +21,13 @@ void exports_basic_example_double(basic_example_double_operation_t* input,
 
   // Set the return value for the list
   ret->doubled_list.len = transformed_list.size();
-  ret->doubled_list.ptr = (double*)realloc(
-      ret->doubled_list.ptr, ret->doubled_list.len * sizeof(double));
-  memcpy(ret->doubled_list.ptr, transformed_list.data(),
-         transformed_list.size() * sizeof(double));
+  const auto double_list_size = ret->doubled_list.len * sizeof(double);
+  ret->doubled_list.ptr = (double*)malloc(double_list_size);
+  memcpy(ret->doubled_list.ptr, transformed_list.data(), double_list_size);
 
   // Set the return value for the string
   ret->doubled_string.len = transformed_string.size();
-  ret->doubled_string.ptr =
-      (uint8_t*)realloc(ret->doubled_string.ptr, ret->doubled_string.len);
-  memcpy(ret->doubled_string.ptr, transformed_string.data(),
-         transformed_string.size());
+  const auto string_size = ret->doubled_string.len * sizeof(uint8_t);
+  ret->doubled_string.ptr = (uint8_t*)malloc(string_size);
+  memcpy(ret->doubled_string.ptr, transformed_string.data(), string_size);
 }
