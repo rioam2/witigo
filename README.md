@@ -1,6 +1,6 @@
 <img align="right" src="./docs/witigo-logo.svg" alt="witigo-logo" width="175"/>
 
-# [witigo](https://github.com/rioam2/witigo) &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rioam2/witigo/blob/main/LICENSE) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/rioam2/witigo?tab=readme-ov-file#contributing) ![GitHub branch check runs](https://img.shields.io/github/check-runs/rioam2/witigo/main)
+# [witigo](https://github.com/rioam2/witigo) &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rioam2/witigo/blob/main/LICENSE) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/rioam2/witigo?tab=readme-ov-file#contributing) ![GitHub branch check runs](https://img.shields.io/github/check-runs/rioam2/witigo/main) [![codecov](https://codecov.io/github/rioam2/witigo/graph/badge.svg?token=9GE8H9XXGF)](https://codecov.io/github/rioam2/witigo)
 
 
 
