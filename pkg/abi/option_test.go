@@ -1,4 +1,4 @@
-package test
+package abi_test
 
 import (
 	"testing"
