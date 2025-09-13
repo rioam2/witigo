@@ -1,6 +1,8 @@
 <img align="right" src="./docs/witigo-logo.svg" alt="witigo-logo" width="175"/>
 
-# [witigo](https://github.com/rioam2/witigo) &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rioam2/witigo/blob/main/LICENSE) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/rioam2/witigo?tab=readme-ov-file#contributing)
+# [witigo](https://github.com/rioam2/witigo) &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rioam2/witigo/blob/main/LICENSE) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/rioam2/witigo?tab=readme-ov-file#contributing) ![GitHub branch check runs](https://img.shields.io/github/check-runs/rioam2/witigo/main)
+
+
 
 Command line tool and library for generating host bindings in golang for WebAssembly (WASM) Components. This is useful for building applications that consume WebAssembly modules that leverage high-level component types defined in WIT (WebAssembly Interface Types).
 
