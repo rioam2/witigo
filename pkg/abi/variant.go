@@ -60,7 +60,25 @@ func ReadVariant(opts AbiOptions, ptr uint64, result any) error {
 		return nil
 	}
 
-	valuePtr := AlignTo(discriminantPtr+discriminantSize, AlignmentOf(activeField.Interface()))
+	// Canonical ABI: the payload area is placed at the discriminant size rounded up to the
+	// maximum alignment of all case payload types (not the active case's alignment). The
+	// overall allocation size already accounts for this (see SizeOf). Previously we aligned
+	// to only the active field alignment which caused smaller-alignment cases (e.g. list/
+	// string with alignment 4) to be read 4 bytes too early when a larger-alignment case
+	// (e.g. a record with alignment 8) existed. This manifested as corrupt list headers and
+	// huge lengths for the bytes arm of complex variants.
+	maxAlign := AlignmentOf(discriminantField.Interface())
+	for i := 1; i < rv.NumField(); i++ {
+		f := rv.Field(i)
+		if f.Kind() == reflect.Struct && f.Type().NumField() == 0 { // empty case
+			continue
+		}
+		fa := AlignmentOf(f.Interface())
+		if fa > maxAlign {
+			maxAlign = fa
+		}
+	}
+	valuePtr := AlignTo(discriminantPtr+discriminantSize, maxAlign)
 	return Read(opts, valuePtr, activeField.Addr().Interface())
 }
 
@@ -136,7 +154,19 @@ func WriteVariant(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free
 	if activeField.Kind() == reflect.Struct && activeField.Type().NumField() == 0 {
 		return ptr, free, nil // empty payload
 	}
-	valuePtr := AlignTo(discrPtr+discrSize, AlignmentOf(activeField.Interface()))
+	// Canonical ABI payload placement: align to max alignment across all cases.
+	maxAlign := AlignmentOf(discrField.Interface())
+	for i := 1; i < rv.NumField(); i++ {
+		f := rv.Field(i)
+		if f.Kind() == reflect.Struct && f.Type().NumField() == 0 {
+			continue
+		}
+		fa := AlignmentOf(f.Interface())
+		if fa > maxAlign {
+			maxAlign = fa
+		}
+	}
+	valuePtr := AlignTo(discrPtr+discrSize, maxAlign)
 	_, valueFree, err := Write(opts, activeField.Interface(), &valuePtr)
 	freeCallbacks = append(freeCallbacks, valueFree)
 	if err != nil {
