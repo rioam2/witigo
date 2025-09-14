@@ -8,7 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Define a synthetic enum type mirroring codegen pattern (suffix Enum)
+// This synthetic type is specifically designed to test the enum detection logic.
+// It matches the naming convention (suffix 'Enum') expected by the isEnumType function.
 type SampleEnum uint8
 
 const (
