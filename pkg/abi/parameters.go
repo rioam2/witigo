@@ -32,6 +32,9 @@ func WriteParameter(opts AbiOptions, value any) (params []Parameter, free AbiFre
 	switch rv.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if isEnumType(rv) {
+			return WriteParameterEnum(opts, value)
+		}
 		return WriteParameterInt(opts, value)
 	case reflect.Bool:
 		return WriteParameterBool(opts, value)
