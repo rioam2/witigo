@@ -35,7 +35,7 @@ func WriteEnum(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free Ab
 		return 0, AbiFreeCallbackNoop, errors.New("must pass a valid enum value")
 	}
 	if !isEnumType(rv) {
-		return 0, AbiFreeCallbackNoop, fmt.Errorf("value must be an enum, got %s", rv.Kind())
+		return 0, AbiFreeCallbackNoop, fmt.Errorf("value must be an enum, got %s", rv.Type().Name())
 	}
 	return WriteInt(opts, value, ptrHint)
 }
@@ -50,7 +50,7 @@ func WriteParameterEnum(opts AbiOptions, value any) (params []Parameter, free Ab
 		return nil, AbiFreeCallbackNoop, errors.New("must pass a valid enum value")
 	}
 	if !isEnumType(rv) {
-		return nil, AbiFreeCallbackNoop, fmt.Errorf("value must be an enum, got %s", rv.Kind())
+		return nil, AbiFreeCallbackNoop, fmt.Errorf("value must be an enum, got %s", rv.Type().Name())
 	}
 	return WriteParameterInt(opts, value)
 }
