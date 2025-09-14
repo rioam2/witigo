@@ -20,7 +20,7 @@ func ReadEnum(opts AbiOptions, ptr uint64, result any) error {
 		return fmt.Errorf("result must be an enum pointer, got %s", rv.Type().Name())
 	}
 	if err := ReadInt(opts, ptr, result); err != nil {
-		return err
+		return fmt.Errorf("failed to read enum as integer: %w", err)
 	}
 	return nil
 }
