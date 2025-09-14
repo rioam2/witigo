@@ -219,6 +219,9 @@ func isStructOptionType(rv reflect.Value) bool {
 	return len(structName) >= 6 && structName[:6] == "Option"
 }
 
+const enumSuffix = "Enum"
+const enumSuffixLen = len(enumSuffix)
+
 // isEnumType returns true if the reflected value is a named integer type whose
 // Go typename ends with the canonical "Enum" suffix produced by the code
 // generator (see generateEnumTypedefFromType). Enums are represented as the
@@ -248,5 +251,5 @@ func isEnumType(rv reflect.Value) bool {
 		return false
 	}
 	name := t.Name()
-	return len(name) >= 4 && name[len(name)-4:] == "Enum"
+	return len(name) >= enumSuffixLen && name[len(name)-enumSuffixLen:] == enumSuffix
 }
