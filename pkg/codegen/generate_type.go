@@ -215,8 +215,9 @@ func generateEnumTypedefFromType(w wit.WitType) *generator.Root {
 
 func generateVariantTypedefFromType(w wit.WitType) *generator.Root {
 	root := generator.NewRoot()
+	discriminantType := fmt.Sprintf("uint%d", discriminantSize(len(w.SubTypes())))
 	enumTypedefName := GenerateTypenameFromType(w) + "Type"
-	enumTypedef := generator.NewRawStatementf("type %s int", enumTypedefName)
+	enumTypedef := generator.NewRawStatementf("type %s %s", enumTypedefName, discriminantType)
 	root = root.AddStatements(enumTypedef)
 	for i, c := range w.SubTypes() {
 		statement := generator.NewRawStatementf(
