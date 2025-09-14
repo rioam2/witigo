@@ -42,7 +42,6 @@ func Read(opts AbiOptions, ptr uint64, result any) error {
 		return ReadList(opts, ptr, result)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		// Treat empty struct (including anonymous struct{} payload cases) as zero-sized with alignment 1
 		if rv.NumField() == 0 {
 			return nil
 		}
@@ -89,7 +88,7 @@ func Write(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFre
 		return WriteList(opts, value, ptrHint)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if rv.NumField() == 0 { // empty struct{} case payload
+		if isAnonymousEmptyStruct(rv) { // empty struct{} case payload
 			return 0, AbiFreeCallbackNoop, nil
 		}
 		if isStructVariantType(rv) {
@@ -131,7 +130,7 @@ func SizeOf(value any) uint64 {
 		return 8
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if rv.NumField() == 0 && structName == "" { // anonymous empty struct
+		if isAnonymousEmptyStruct(rv) {
 			return 0
 		}
 		if isStructVariantType(rv) {
@@ -203,7 +202,7 @@ func AlignmentOf(value any) uint64 {
 		return 8
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if rv.NumField() == 0 && structName == "" { // anonymous empty struct
+		if isAnonymousEmptyStruct(rv) {
 			return 1
 		}
 		if isStructVariantType(rv) {
@@ -277,6 +276,14 @@ func isStructVariantType(rv reflect.Value) bool {
 		return false
 	}
 	return rv.Type().Field(0).Name == "Type"
+}
+
+func isAnonymousEmptyStruct(rv reflect.Value) bool {
+	if rv.Kind() != reflect.Struct {
+		return false
+	}
+	structName := rv.Type().Name()
+	return rv.NumField() == 0 && structName == ""
 }
 
 func isStructOptionType(rv reflect.Value) bool {
