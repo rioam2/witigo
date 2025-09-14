@@ -42,7 +42,13 @@ func Read(opts AbiOptions, ptr uint64, result any) error {
 		return ReadList(opts, ptr, result)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if isStructRecordType(rv) {
+		// Treat empty struct (including anonymous struct{} payload cases) as zero-sized with alignment 1
+		if rv.NumField() == 0 {
+			return nil
+		}
+		if isStructVariantType(rv) {
+			return ReadVariant(opts, ptr, result)
+		} else if isStructRecordType(rv) {
 			return ReadRecord(opts, ptr, result)
 		} else if isStructOptionType(rv) {
 			return ReadOption(opts, ptr, result)
@@ -83,7 +89,12 @@ func Write(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFre
 		return WriteList(opts, value, ptrHint)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if isStructRecordType(rv) {
+		if rv.NumField() == 0 { // empty struct{} case payload
+			return 0, AbiFreeCallbackNoop, nil
+		}
+		if isStructVariantType(rv) {
+			return WriteVariant(opts, value, ptrHint)
+		} else if isStructRecordType(rv) {
 			return WriteRecord(opts, value, ptrHint)
 		} else if isStructOptionType(rv) {
 			return WriteOption(opts, value, ptrHint)
@@ -120,7 +131,33 @@ func SizeOf(value any) uint64 {
 		return 8
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if isStructRecordType(rv) {
+		if rv.NumField() == 0 && structName == "" { // anonymous empty struct
+			return 0
+		}
+		if isStructVariantType(rv) {
+			// Variant size = size(discriminant) + max(size(case_i)) with inner value aligned, then
+			// aligned to max alignment of discriminant and cases.
+			if rv.NumField() == 0 {
+				panic("Variant struct must contain at least a discriminant field")
+			}
+			discriminantSize := SizeOf(rv.Field(0).Interface())
+			maxCaseSize := uint64(0)
+			maxAlignment := AlignmentOf(rv.Field(0).Interface())
+			for i := 1; i < rv.NumField(); i++ {
+				field := rv.Field(i)
+				fieldSize := SizeOf(field.Interface())
+				fieldAlignment := AlignmentOf(field.Interface())
+				if fieldSize > maxCaseSize {
+					maxCaseSize = fieldSize
+				}
+				if fieldAlignment > maxAlignment {
+					maxAlignment = fieldAlignment
+				}
+			}
+			// Place case value immediately after discriminant and align whole to maxAlignment
+			total := discriminantSize + maxCaseSize
+			return AlignTo(total, maxAlignment)
+		} else if isStructRecordType(rv) {
 			size := uint64(0)
 			for i := 0; i < rv.NumField(); i++ {
 				field := rv.Field(i)
@@ -166,7 +203,23 @@ func AlignmentOf(value any) uint64 {
 		return 8
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if isStructRecordType(rv) {
+		if rv.NumField() == 0 && structName == "" { // anonymous empty struct
+			return 1
+		}
+		if isStructVariantType(rv) {
+			if rv.NumField() == 0 {
+				panic("Variant struct must contain at least a discriminant field")
+			}
+			alignment := AlignmentOf(rv.Field(0).Interface())
+			for i := 1; i < rv.NumField(); i++ {
+				field := rv.Field(i)
+				fieldAlignment := AlignmentOf(field.Interface())
+				if fieldAlignment > alignment {
+					alignment = fieldAlignment
+				}
+			}
+			return alignment
+		} else if isStructRecordType(rv) {
 			alignment := uint64(1)
 			for i := 0; i < rv.NumField(); i++ {
 				field := rv.Field(i)
@@ -209,6 +262,21 @@ func isStructRecordType(rv reflect.Value) bool {
 	}
 	structName := rv.Type().Name()
 	return len(structName) >= 6 && structName[len(structName)-6:] == "Record"
+}
+
+func isStructVariantType(rv reflect.Value) bool {
+	if rv.Kind() != reflect.Struct {
+		return false
+	}
+	name := rv.Type().Name()
+	if len(name) < 7 || name[len(name)-7:] != "Variant" { // suffix Variant
+		return false
+	}
+	// Minimal structural check: first field named Type
+	if rv.NumField() == 0 {
+		return false
+	}
+	return rv.Type().Field(0).Name == "Type"
 }
 
 func isStructOptionType(rv reflect.Value) bool {
