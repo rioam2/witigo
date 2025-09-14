@@ -1,7 +1,5 @@
 package witigo
 
-import "reflect"
-
 type AbiType int
 
 const (
@@ -98,16 +96,13 @@ func (a AbiType) String() string {
 	}
 }
 
-type AbiTypeProperties struct {
-	SubTypes    []AbiTypeDefinition
-	Length      *int
-	ReflectType reflect.Kind
-}
-
-type AbiTypeDefinition interface {
-	Type() AbiType
-	Properties() AbiTypeProperties
-	Alignment() int
-	SizeInBytes() int
-	String() string
+func (a AbiType) IsPrimitive() bool {
+	switch a {
+	case AbiTypeBool, AbiTypeS8, AbiTypeS16, AbiTypeS32, AbiTypeS64,
+		AbiTypeU8, AbiTypeU16, AbiTypeU32, AbiTypeU64,
+		AbiTypeF32, AbiTypeF64, AbiTypeChar, AbiTypeEnum:
+		return true
+	default:
+		return false
+	}
 }

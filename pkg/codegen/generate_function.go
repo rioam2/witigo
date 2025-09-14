@@ -49,12 +49,19 @@ func GenerateFromFunction(w wit.WitFunction, receiver *generator.FuncReceiver) *
 		generator.NewRawStatementf("defer postReturn()"),
 	)
 	if w.Returns() != nil {
-		fn = fn.AddStatements(
-			generator.NewRawStatementf("err = abi.Read(i.abiOpts, ret, &result)"),
-			generator.NewRawStatementf("if err != nil {"),
-			generator.NewRawStatementf("  return result, fmt.Errorf(\"failed to read result: %%w\", err)"),
-			generator.NewRawStatementf("}"),
-		)
+		// Special case: primitive types are returned directly as flat values.
+		if w.Returns().Kind().IsPrimitive() {
+			fn = fn.AddStatements(
+				generator.NewRawStatementf("result = %s(ret)", GenerateTypenameFromType(w.Returns())),
+			)
+		} else {
+			fn = fn.AddStatements(
+				generator.NewRawStatementf("err = abi.Read(i.abiOpts, ret, &result)"),
+				generator.NewRawStatementf("if err != nil {"),
+				generator.NewRawStatementf("  return result, fmt.Errorf(\"failed to read result: %%w\", err)"),
+				generator.NewRawStatementf("}"),
+			)
+		}
 	}
 	if w.Returns() == nil {
 		fn = fn.AddStatements(generator.NewRawStatement("return nil"))
