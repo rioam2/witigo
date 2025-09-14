@@ -30,10 +30,12 @@ func TestWriteParameterVariant(t *testing.T) {
 	params, free, err := abi.WriteParameters(opts, v)
 	require.NoError(t, err)
 	defer free()
-	// Expect discriminant + uint32 (flattened as single param)
-	require.Len(t, params, 2)
+	// Flattened shape should be: discriminant + 2 slots (string case pointer,len) => 3 params
+	require.Len(t, params, 3)
 	assert.Equal(t, uint64(SampleVariantTypeB), params[0])
-	assert.Equal(t, uint64(0xDEADBEEF), params[1])
+	assert.Equal(t, uint64(0xDEADBEEF), params[1]) // B payload in first payload slot
+	// Third slot unused for this case => zero
+	assert.Equal(t, uint64(0), params[2])
 }
 
 func TestVariantRoundTripEmptyCase(t *testing.T) {

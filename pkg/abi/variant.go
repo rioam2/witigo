@@ -180,22 +180,59 @@ func WriteParameterVariant(opts AbiOptions, value any) (params []Parameter, free
 		return params, free, fmt.Errorf("variant discriminant %d out of range [0,%d)", caseIndex, numCases)
 	}
 
-	discrParam := Parameter{
-		Value:     discrUint,
-		Size:      SizeOf(discrField.Interface()),
-		Alignment: AlignmentOf(discrField.Interface()),
-	}
+	// Append discriminant first
+	discrParam := Parameter{Value: discrUint, Size: SizeOf(discrField.Interface()), Alignment: AlignmentOf(discrField.Interface())}
 	params = append(params, discrParam)
 
+	// Build unified payload shape across all cases (flatten_variant logic approximation)
+	type slot struct{ size, align uint64 }
+	slots := []slot{}
+	for i := 1; i < rv.NumField(); i++ {
+		f := rv.Field(i)
+		if f.Kind() == reflect.Struct && f.Type().NumField() == 0 {
+			continue // empty payload contributes nothing
+		}
+		zeroVal := reflect.New(f.Type()).Elem().Interface()
+		fp, fpFree, e := WriteParameter(opts, zeroVal)
+		freeCallbacks = append(freeCallbacks, fpFree)
+		if e != nil {
+			return params, free, e
+		}
+		for si, p := range fp {
+			if si >= len(slots) {
+				slots = append(slots, slot{size: p.Size, align: p.Alignment})
+			} else {
+				if p.Size > slots[si].size {
+					slots[si].size = p.Size
+				}
+				if p.Alignment > slots[si].align {
+					slots[si].align = p.Alignment
+				}
+			}
+		}
+	}
+
+	// Real params for active case
 	activeField := rv.Field(caseIndex + 1)
-	if activeField.Kind() == reflect.Struct && activeField.Type().NumField() == 0 {
-		return params, free, nil // empty payload – only discriminant
+	realParams := []Parameter{}
+	if !(activeField.Kind() == reflect.Struct && activeField.Type().NumField() == 0) {
+		rp, rpFree, e := WriteParameter(opts, activeField.Interface())
+		freeCallbacks = append(freeCallbacks, rpFree)
+		if e != nil {
+			return params, free, fmt.Errorf("failed to write variant payload parameters: %w", e)
+		}
+		realParams = rp
 	}
-	fieldParams, fieldFree, err := WriteParameter(opts, activeField.Interface())
-	freeCallbacks = append(freeCallbacks, fieldFree)
-	if err != nil {
-		return params, free, fmt.Errorf("failed to write variant payload parameters: %w", err)
+
+	for i, s := range slots {
+		if i < len(realParams) {
+			p := realParams[i]
+			p.Size = s.size
+			p.Alignment = s.align
+			params = append(params, p)
+		} else {
+			params = append(params, Parameter{Value: 0, Size: s.size, Alignment: s.align})
+		}
 	}
-	params = append(params, fieldParams...)
 	return params, free, nil
 }

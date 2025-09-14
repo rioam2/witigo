@@ -64,7 +64,7 @@ func TestVariant(t *testing.T) {
 		{
 			name:     "Test with Phone variant type",
 			input:    all_types_example_component.AllowedDestinationsVariant{Type: all_types_example_component.AllowedDestinationsVariantTypeRestricted, Restricted: []string{"123-456-7890"}},
-			expected: all_types_example_component.AllowedDestinationsVariant{Type: all_types_example_component.AllowedDestinationsVariantTypeRestricted, Restricted: []string{"123-456-7890"}},
+			expected: all_types_example_component.AllowedDestinationsVariant{Type: all_types_example_component.AllowedDestinationsVariantTypeRestricted, Restricted: []string{"123-456-7890 - modified by C++"}},
 		},
 	}
 
