@@ -6,6 +6,8 @@
 
 Command line tool and library for generating host bindings in golang for WebAssembly (WASM) Components. This is useful for building applications that consume WebAssembly modules that leverage high-level component types defined in WIT (WebAssembly Interface Types).
 
+This project aims to provide a full implementation of the WebAssembly Component Model for usage in Golang host runtimes, including support for all WIT types and function signatures. See [CanonicalABI.md](./docs/CanonicalABI.md) for details on the canonical ABI used as a source of truth for implementation business logic.
+
 Here is an example of how `witigo` transforms a WIT type into its corresponding Go type:
 
 ![type-transformation-example](./docs/type-illustration.svg)
