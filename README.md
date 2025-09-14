@@ -59,7 +59,7 @@ The generated package will include all necessary bindings and types to interact 
     - [ ] `result`
     - [ ] `tuple`
     - [ ] `flags`
-    - [ ] `enum`
+    - [x] `enum`
   - [x] `Write(type)` - Lowers a type to its WebAssembly representation.
     - [x] `s8`, `s16`, `s32`, `s64`
     - [x] `u8`, `u16`, `u32`, `u64`
@@ -73,14 +73,14 @@ The generated package will include all necessary bindings and types to interact 
     - [ ] `result`
     - [ ] `tuple`
     - [ ] `flags`
-    - [ ] `enum`
+    - [x] `enum`
 - [ ] Host binding code generation
   - [x] Generate type definitions for interface types
   - [x] Generate exported function bindings
   - [ ] Generate imported function bindings
   - [ ] Allow configuration of Wazero runtime on instantiation
 - [ ] Devops
-  - [ ] Github Workflows actions to run tests
+  - [x] Github Workflows actions to run tests
   - [ ] Dockerfile for building and running the tool
   - [ ] Automated releases using Release Please
   - [ ] Publishing prebuilt binaries on Releases
