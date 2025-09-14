@@ -85,11 +85,12 @@ void exports_all_types_example_variant_func(
   } else if (input->tag == ALL_TYPES_EXAMPLE_ALLOWED_DESTINATIONS_RESTRICTED) {
     ret->tag = ALL_TYPES_EXAMPLE_ALLOWED_DESTINATIONS_RESTRICTED;
     ret->val.restricted.len = input->val.restricted.len;
-    ret->val.restricted.ptr = (all_types_example_string_t*)realloc(
-        ret->val.restricted.ptr,
-        input->val.restricted.len * sizeof(all_types_example_string_t));
-    memcpy(ret->val.restricted.ptr, input->val.restricted.ptr,
-           input->val.restricted.len * sizeof(all_types_example_string_t));
+    ret->val.restricted.ptr = (all_types_example_string_t*)malloc(
+        ret->val.restricted.len * sizeof(ret->val.restricted.ptr[0]));
+    for (size_t i = 0; i < input->val.restricted.len; i++) {
+      exports_all_types_example_string_func(&input->val.restricted.ptr[i],
+                                            &ret->val.restricted.ptr[i]);
+    }
   }
 }
 
