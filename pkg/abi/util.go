@@ -28,6 +28,9 @@ func Read(opts AbiOptions, ptr uint64, result any) error {
 	switch rv.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if isEnumType(rv) {
+			return ReadEnum(opts, ptr, result)
+		}
 		return ReadInt(opts, ptr, result)
 	case reflect.Bool:
 		return ReadBool(opts, ptr, result)
@@ -66,6 +69,9 @@ func Write(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFre
 	switch rv.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if isEnumType(rv) {
+			return WriteEnum(opts, value, ptrHint)
+		}
 		return WriteInt(opts, value, ptrHint)
 	case reflect.Bool:
 		return WriteBool(opts, value, ptrHint)
@@ -211,4 +217,39 @@ func isStructOptionType(rv reflect.Value) bool {
 	}
 	structName := rv.Type().Name()
 	return len(structName) >= 6 && structName[:6] == "Option"
+}
+
+// isEnumType returns true if the reflected value is a named integer type whose
+// Go typename ends with the canonical "Enum" suffix produced by the code
+// generator (see generateEnumTypedefFromType). Enums are represented as the
+// smallest unsigned integer type capable of holding the discriminant as per
+// the Canonical ABI; here we simply treat them as integers for load/store and
+// parameter flattening but add this predicate so that future specialized logic
+// (e.g. bounds checking) can hook in without changing call sites.
+func isEnumType(rv reflect.Value) bool {
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return false
+	}
+	kind := rv.Kind()
+	switch kind {
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
+		// continue
+	default:
+		return false
+	}
+	t := rv.Type()
+	// Only user-defined (named) types should be considered – primitive
+	// aliases like plain "uint8" should not match.
+	if t.PkgPath() == "" { // builtin / unnamed
+		return false
+	}
+
+	const enumSuffix = "Enum"
+	const enumSuffixLen = len(enumSuffix)
+	name := t.Name()
+	return len(name) >= enumSuffixLen && name[len(name)-enumSuffixLen:] == enumSuffix
 }

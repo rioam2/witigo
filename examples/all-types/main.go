@@ -57,6 +57,13 @@ func main() {
 	}
 	fmt.Printf("Result of OptionFunc: %+v\n", optionFuncResult)
 
+	enumFuncResult, err := instance.EnumFunc(all_types_example_component.ColorEnumNavyBlue)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error calling EnumFunc: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Result of EnumFunc: %+v\n", enumFuncResult)
+
 	resultFuncResult, err := instance.ResultFunc(all_types_example_component.Uint64StringResult{Ok: 42, Error: "Success"})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error calling ResultFunc: %v\n", err)
@@ -70,13 +77,6 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("Result of VariantFunc: %+v\n", variantFuncResult)
-
-	enumFuncResult, err := instance.EnumFunc(all_types_example_component.ColorEnumLimeGreen)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error calling EnumFunc: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("Result of EnumFunc: %+v\n", enumFuncResult)
 
 	tupleFuncResult, err := instance.TupleFunc(all_types_example_component.StringUint32Tuple{Elem0: "example", Elem1: 12345})
 	if err != nil {
