@@ -7,12 +7,6 @@ import (
 )
 
 // ReadVariant reads a variant from memory at the specified pointer into the result.
-// Memory layout (current implementation):
-//
-//	[ discriminant (size=SizeOf(Type field)) ][ payload (active case only, aligned) ]
-//
-// The overall allocation size equals discriminant size + max(size(case_i)) rounded up
-// to the maximum alignment of all fields. This mirrors a tagged union representation.
 func ReadVariant(opts AbiOptions, ptr uint64, result any) error {
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
@@ -31,6 +25,7 @@ func ReadVariant(opts AbiOptions, ptr uint64, result any) error {
 	discriminantSize := SizeOf(discriminantField.Interface())
 	discriminantAlign := AlignmentOf(discriminantField.Interface())
 	discriminantPtr := AlignTo(ptr, discriminantAlign)
+
 	// allocate a temporary variable to read into then set (so we invoke int logic)
 	tmpPtrVal := reflect.New(discriminantField.Type())
 	if err := ReadInt(opts, discriminantPtr, tmpPtrVal.Interface()); err != nil {
@@ -55,18 +50,12 @@ func ReadVariant(opts AbiOptions, ptr uint64, result any) error {
 
 	// Active case field is offset +1 from Type field
 	activeField := rv.Field(caseIndex + 1)
-	// Empty struct payload -> nothing further to read
-	if activeField.Kind() == reflect.Struct && activeField.Type().NumField() == 0 {
+
+	// Empty variant case (struct{}) has no payload to read
+	if isAnonymousEmptyStruct(activeField) {
 		return nil
 	}
 
-	// Canonical ABI: the payload area is placed at the discriminant size rounded up to the
-	// maximum alignment of all case payload types (not the active case's alignment). The
-	// overall allocation size already accounts for this (see SizeOf). Previously we aligned
-	// to only the active field alignment which caused smaller-alignment cases (e.g. list/
-	// string with alignment 4) to be read 4 bytes too early when a larger-alignment case
-	// (e.g. a record with alignment 8) existed. This manifested as corrupt list headers and
-	// huge lengths for the bytes arm of complex variants.
 	valuePtr := AlignTo(discriminantPtr+discriminantSize, maxVariantAlignment(rv))
 	return Read(opts, valuePtr, activeField.Addr().Interface())
 }
@@ -104,47 +93,46 @@ func WriteVariant(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free
 		freeCallbacks = append(freeCallbacks, freeVar)
 	}
 
-	discrField := rv.Field(0)
-	discrSize := SizeOf(discrField.Interface())
-	discrAlign := AlignmentOf(discrField.Interface())
-	discrPtr := AlignTo(ptr, discrAlign)
+	discriminantField := rv.Field(0)
+	discriminantSize := SizeOf(discriminantField.Interface())
+	discriminantAlign := AlignmentOf(discriminantField.Interface())
+	discriminantPtr := AlignTo(ptr, discriminantAlign)
 
-	// Serialize discriminant bytes
-	bytes := make([]byte, discrSize)
-	if discrField.CanUint() {
-		v := discrField.Uint()
+	// Serialize discriminant bytes into linear memory
+	bytes := make([]byte, discriminantSize)
+	if discriminantField.CanUint() {
+		v := discriminantField.Uint()
 		for i := range bytes {
 			bytes[i] = byte(v >> (8 * uint(i)))
 		}
-	} else if discrField.CanInt() {
-		v := discrField.Int()
+	} else if discriminantField.CanInt() {
+		v := discriminantField.Int()
 		for i := range bytes {
 			bytes[i] = byte(v >> (8 * uint(i)))
 		}
 	} else {
-		return ptr, free, fmt.Errorf("discriminant field type %s not int/uint", discrField.Type())
+		return ptr, free, fmt.Errorf("discriminant field type %s not int/uint", discriminantField.Type())
 	}
-	if !opts.Memory.Write(discrPtr, bytes) {
-		return ptr, free, fmt.Errorf("failed to write discriminant at %d", discrPtr)
+	if !opts.Memory.Write(discriminantPtr, bytes) {
+		return ptr, free, fmt.Errorf("failed to write discriminant at %d", discriminantPtr)
 	}
 
-	discrVal := uint64(0)
-	if discrField.CanUint() {
-		discrVal = discrField.Uint()
+	discriminantVal := uint64(0)
+	if discriminantField.CanUint() {
+		discriminantVal = discriminantField.Uint()
 	} else {
-		discrVal = uint64(discrField.Int())
+		discriminantVal = uint64(discriminantField.Int())
 	}
-	caseIndex := int(discrVal)
+	caseIndex := int(discriminantVal)
 	numCases := rv.NumField() - 1
 	if caseIndex < 0 || caseIndex >= numCases {
 		return ptr, free, fmt.Errorf("variant discriminant %d out of range [0,%d)", caseIndex, numCases)
 	}
 	activeField := rv.Field(caseIndex + 1)
-	if activeField.Kind() == reflect.Struct && activeField.Type().NumField() == 0 {
-		return ptr, free, nil // empty payload
+	if isAnonymousEmptyStruct(activeField) {
+		return ptr, free, nil
 	}
-	// Canonical ABI payload placement: align to max alignment across all cases.
-	valuePtr := AlignTo(discrPtr+discrSize, maxVariantAlignment(rv))
+	valuePtr := AlignTo(discriminantPtr+discriminantSize, maxVariantAlignment(rv))
 	_, valueFree, err := Write(opts, activeField.Interface(), &valuePtr)
 	freeCallbacks = append(freeCallbacks, valueFree)
 	if err != nil {
@@ -173,48 +161,55 @@ func WriteParameterVariant(opts AbiOptions, value any) (params []Parameter, free
 		return params, free, errors.New("variant struct missing fields")
 	}
 
-	discrField := rv.Field(0)
-	discrUint := uint64(0)
-	if discrField.CanUint() {
-		discrUint = discrField.Uint()
-	} else if discrField.CanInt() {
-		discrUint = uint64(discrField.Int())
+	discriminantField := rv.Field(0)
+	discriminantUint := uint64(0)
+	if discriminantField.CanUint() {
+		discriminantUint = discriminantField.Uint()
+	} else if discriminantField.CanInt() {
+		discriminantUint = uint64(discriminantField.Int())
 	} else {
-		return params, free, fmt.Errorf("discriminant field type %s not int/uint", discrField.Type())
+		return params, free, fmt.Errorf("discriminant field type %s not int/uint", discriminantField.Type())
 	}
-	caseIndex := int(discrUint)
+	caseIndex := int(discriminantUint)
 	numCases := rv.NumField() - 1
 	if caseIndex < 0 || caseIndex >= numCases {
 		return params, free, fmt.Errorf("variant discriminant %d out of range [0,%d)", caseIndex, numCases)
 	}
 
 	// Append discriminant first
-	discrParam := Parameter{Value: discrUint, Size: SizeOf(discrField.Interface()), Alignment: AlignmentOf(discrField.Interface())}
-	params = append(params, discrParam)
+	discriminantParam := Parameter{
+		Value:     discriminantUint,
+		Size:      SizeOf(discriminantField.Interface()),
+		Alignment: AlignmentOf(discriminantField.Interface()),
+	}
+	params = append(params, discriminantParam)
 
 	// Build unified payload shape across all cases (flatten_variant logic approximation)
-	type slot struct{ size, align uint64 }
+	type slot struct {
+		size  uint64
+		align uint64
+	}
 	slots := []slot{}
-	for i := 1; i < rv.NumField(); i++ {
-		f := rv.Field(i)
-		if f.Kind() == reflect.Struct && f.Type().NumField() == 0 {
+	for fieldIndex := 1; fieldIndex < rv.NumField(); fieldIndex++ {
+		field := rv.Field(fieldIndex)
+		if isAnonymousEmptyStruct(field) {
 			continue // empty payload contributes nothing
 		}
-		zeroVal := reflect.New(f.Type()).Elem().Interface()
-		fp, fpFree, e := WriteParameter(opts, zeroVal)
-		freeCallbacks = append(freeCallbacks, fpFree)
+		zeroVal := reflect.New(field.Type()).Elem().Interface()
+		fieldParams, fieldFree, e := WriteParameter(opts, zeroVal)
+		freeCallbacks = append(freeCallbacks, fieldFree)
 		if e != nil {
 			return params, free, e
 		}
-		for si, p := range fp {
-			if si >= len(slots) {
-				slots = append(slots, slot{size: p.Size, align: p.Alignment})
+		for slotIndex, param := range fieldParams {
+			if slotIndex >= len(slots) {
+				slots = append(slots, slot{size: param.Size, align: param.Alignment})
 			} else {
-				if p.Size > slots[si].size {
-					slots[si].size = p.Size
+				if param.Size > slots[slotIndex].size {
+					slots[slotIndex].size = param.Size
 				}
-				if p.Alignment > slots[si].align {
-					slots[si].align = p.Alignment
+				if param.Alignment > slots[slotIndex].align {
+					slots[slotIndex].align = param.Alignment
 				}
 			}
 		}
@@ -223,24 +218,29 @@ func WriteParameterVariant(opts AbiOptions, value any) (params []Parameter, free
 	// Real params for active case
 	activeField := rv.Field(caseIndex + 1)
 	realParams := []Parameter{}
-	if !(activeField.Kind() == reflect.Struct && activeField.Type().NumField() == 0) {
-		rp, rpFree, e := WriteParameter(opts, activeField.Interface())
-		freeCallbacks = append(freeCallbacks, rpFree)
+	if !isAnonymousEmptyStruct(activeField) {
+		activeFieldParams, activeFieldFree, e := WriteParameter(opts, activeField.Interface())
+		freeCallbacks = append(freeCallbacks, activeFieldFree)
 		if e != nil {
 			return params, free, fmt.Errorf("failed to write variant payload parameters: %w", e)
 		}
-		realParams = rp
+		realParams = activeFieldParams
 	}
 
-	for i, s := range slots {
-		if i < len(realParams) {
-			p := realParams[i]
-			p.Size = s.size
-			p.Alignment = s.align
+	for slotIndex, slot := range slots {
+		if slotIndex < len(realParams) {
+			p := realParams[slotIndex]
+			p.Size = slot.size
+			p.Alignment = slot.align
 			params = append(params, p)
 		} else {
-			params = append(params, Parameter{Value: 0, Size: s.size, Alignment: s.align})
+			params = append(params, Parameter{
+				Value:     0,
+				Size:      slot.size,
+				Alignment: slot.align,
+			})
 		}
 	}
+
 	return params, free, nil
 }
