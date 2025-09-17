@@ -37,7 +37,7 @@ func TestEnum(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := instance.EnumFunc(tt.input)
 			assert.NoError(t, err)
-			assert.Equal(t, result, tt.expected)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -74,7 +74,7 @@ func TestVariant(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := instance.VariantFunc(tt.input)
 			assert.NoError(t, err)
-			assert.Equal(t, result, tt.expected)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
