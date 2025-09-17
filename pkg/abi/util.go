@@ -7,6 +7,8 @@ import (
 	"reflect"
 )
 
+const panicVariantMissingDiscriminant = "Variant struct must contain at least a discriminant field"
+
 // AbiFreeCallback is a returned function from write operations that can be used to free resources.
 type AbiFreeCallback func() error
 
@@ -134,28 +136,20 @@ func SizeOf(value any) uint64 {
 			return 0
 		}
 		if isStructVariantType(rv) {
-			// Variant size = size(discriminant) + max(size(case_i)) with inner value aligned, then
-			// aligned to max alignment of discriminant and cases.
+			// Variant size = size(discriminant) + max(size(case_i)) aligned to max variant alignment.
 			if rv.NumField() == 0 {
-				panic("Variant struct must contain at least a discriminant field")
+				panic(panicVariantMissingDiscriminant)
 			}
 			discriminantSize := SizeOf(rv.Field(0).Interface())
 			maxCaseSize := uint64(0)
-			maxAlignment := AlignmentOf(rv.Field(0).Interface())
 			for i := 1; i < rv.NumField(); i++ {
 				field := rv.Field(i)
 				fieldSize := SizeOf(field.Interface())
-				fieldAlignment := AlignmentOf(field.Interface())
 				if fieldSize > maxCaseSize {
 					maxCaseSize = fieldSize
 				}
-				if fieldAlignment > maxAlignment {
-					maxAlignment = fieldAlignment
-				}
 			}
-			// Place case value immediately after discriminant and align whole to maxAlignment
-			total := discriminantSize + maxCaseSize
-			return AlignTo(total, maxAlignment)
+			return AlignTo(discriminantSize+maxCaseSize, maxVariantAlignment(rv))
 		} else if isStructRecordType(rv) {
 			size := uint64(0)
 			for i := 0; i < rv.NumField(); i++ {
@@ -207,17 +201,9 @@ func AlignmentOf(value any) uint64 {
 		}
 		if isStructVariantType(rv) {
 			if rv.NumField() == 0 {
-				panic("Variant struct must contain at least a discriminant field")
+				panic(panicVariantMissingDiscriminant)
 			}
-			alignment := AlignmentOf(rv.Field(0).Interface())
-			for i := 1; i < rv.NumField(); i++ {
-				field := rv.Field(i)
-				fieldAlignment := AlignmentOf(field.Interface())
-				if fieldAlignment > alignment {
-					alignment = fieldAlignment
-				}
-			}
-			return alignment
+			return maxVariantAlignment(rv)
 		} else if isStructRecordType(rv) {
 			alignment := uint64(1)
 			for i := 0; i < rv.NumField(); i++ {
@@ -276,6 +262,30 @@ func isStructVariantType(rv reflect.Value) bool {
 		return false
 	}
 	return rv.Type().Field(0).Name == "Type"
+}
+
+// maxVariantAlignment returns the maximum alignment across the discriminant and
+// all (non-empty) case payload fields of a variant struct. The caller MUST pass
+// a reflect.Value satisfying isStructVariantType. Panics if the variant is
+// malformed (e.g. zero fields).
+func maxVariantAlignment(rv reflect.Value) uint64 {
+	if rv.NumField() == 0 {
+		panic("Variant struct must contain at least a discriminant field")
+	}
+	// Start with discriminant alignment
+	maxAlign := AlignmentOf(rv.Field(0).Interface())
+	for i := 1; i < rv.NumField(); i++ {
+		f := rv.Field(i)
+		// Skip empty struct case payloads – they contribute nothing
+		if f.Kind() == reflect.Struct && f.Type().NumField() == 0 {
+			continue
+		}
+		a := AlignmentOf(f.Interface())
+		if a > maxAlign {
+			maxAlign = a
+		}
+	}
+	return maxAlign
 }
 
 func isAnonymousEmptyStruct(rv reflect.Value) bool {

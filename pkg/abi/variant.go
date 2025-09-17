@@ -67,18 +67,7 @@ func ReadVariant(opts AbiOptions, ptr uint64, result any) error {
 	// string with alignment 4) to be read 4 bytes too early when a larger-alignment case
 	// (e.g. a record with alignment 8) existed. This manifested as corrupt list headers and
 	// huge lengths for the bytes arm of complex variants.
-	maxAlign := AlignmentOf(discriminantField.Interface())
-	for i := 1; i < rv.NumField(); i++ {
-		f := rv.Field(i)
-		if f.Kind() == reflect.Struct && f.Type().NumField() == 0 { // empty case
-			continue
-		}
-		fa := AlignmentOf(f.Interface())
-		if fa > maxAlign {
-			maxAlign = fa
-		}
-	}
-	valuePtr := AlignTo(discriminantPtr+discriminantSize, maxAlign)
+	valuePtr := AlignTo(discriminantPtr+discriminantSize, maxVariantAlignment(rv))
 	return Read(opts, valuePtr, activeField.Addr().Interface())
 }
 
@@ -155,18 +144,7 @@ func WriteVariant(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free
 		return ptr, free, nil // empty payload
 	}
 	// Canonical ABI payload placement: align to max alignment across all cases.
-	maxAlign := AlignmentOf(discrField.Interface())
-	for i := 1; i < rv.NumField(); i++ {
-		f := rv.Field(i)
-		if f.Kind() == reflect.Struct && f.Type().NumField() == 0 {
-			continue
-		}
-		fa := AlignmentOf(f.Interface())
-		if fa > maxAlign {
-			maxAlign = fa
-		}
-	}
-	valuePtr := AlignTo(discrPtr+discrSize, maxAlign)
+	valuePtr := AlignTo(discrPtr+discrSize, maxVariantAlignment(rv))
 	_, valueFree, err := Write(opts, activeField.Interface(), &valuePtr)
 	freeCallbacks = append(freeCallbacks, valueFree)
 	if err != nil {
