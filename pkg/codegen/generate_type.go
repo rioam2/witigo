@@ -2,7 +2,6 @@ package codegen
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/golang-cz/textcase"
 	"github.com/moznion/gowrtr/generator"
@@ -46,11 +45,6 @@ func GenerateTypenameFromType(w wit.WitType) string {
 		}
 		panic(fmt.Sprintf("Unknown WIT type kind: %s", kind))
 	}
-}
-
-func discriminantSize(n int) int {
-	bits := math.Ceil(math.Log2(float64(n))/8) * 8
-	return int(bits)
 }
 
 func generatePrimitiveTypenameFromType(w wit.WitType) string {
@@ -215,8 +209,9 @@ func generateEnumTypedefFromType(w wit.WitType) *generator.Root {
 
 func generateVariantTypedefFromType(w wit.WitType) *generator.Root {
 	root := generator.NewRoot()
+	discriminantType := fmt.Sprintf("uint%d", discriminantSize(len(w.SubTypes())))
 	enumTypedefName := GenerateTypenameFromType(w) + "Type"
-	enumTypedef := generator.NewRawStatementf("type %s int", enumTypedefName)
+	enumTypedef := generator.NewRawStatementf("type %s %s", enumTypedefName, discriminantType)
 	root = root.AddStatements(enumTypedef)
 	for i, c := range w.SubTypes() {
 		statement := generator.NewRawStatementf(

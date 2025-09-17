@@ -64,19 +64,19 @@ func main() {
 	}
 	fmt.Printf("Result of EnumFunc: %+v\n", enumFuncResult)
 
-	resultFuncResult, err := instance.ResultFunc(all_types_example_component.Uint64StringResult{Ok: 42, Error: "Success"})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error calling ResultFunc: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("Result of ResultFunc: %+v\n", resultFuncResult)
-
 	variantFuncResult, err := instance.VariantFunc(all_types_example_component.AllowedDestinationsVariant{Type: all_types_example_component.AllowedDestinationsVariantTypeAny})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error calling VariantFunc: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("Result of VariantFunc: %+v\n", variantFuncResult)
+
+	resultFuncResult, err := instance.ResultFunc(all_types_example_component.Uint64StringResult{Ok: 42, Error: "Success"})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error calling ResultFunc: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Result of ResultFunc: %+v\n", resultFuncResult)
 
 	tupleFuncResult, err := instance.TupleFunc(all_types_example_component.StringUint32Tuple{Elem0: "example", Elem1: 12345})
 	if err != nil {

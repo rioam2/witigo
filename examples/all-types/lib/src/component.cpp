@@ -85,11 +85,12 @@ void exports_all_types_example_variant_func(
   } else if (input->tag == ALL_TYPES_EXAMPLE_ALLOWED_DESTINATIONS_RESTRICTED) {
     ret->tag = ALL_TYPES_EXAMPLE_ALLOWED_DESTINATIONS_RESTRICTED;
     ret->val.restricted.len = input->val.restricted.len;
-    ret->val.restricted.ptr = (all_types_example_string_t*)realloc(
-        ret->val.restricted.ptr,
-        input->val.restricted.len * sizeof(all_types_example_string_t));
-    memcpy(ret->val.restricted.ptr, input->val.restricted.ptr,
-           input->val.restricted.len * sizeof(all_types_example_string_t));
+    ret->val.restricted.ptr = (all_types_example_string_t*)malloc(
+        ret->val.restricted.len * sizeof(ret->val.restricted.ptr[0]));
+    for (size_t i = 0; i < input->val.restricted.len; i++) {
+      exports_all_types_example_string_func(&input->val.restricted.ptr[i],
+                                            &ret->val.restricted.ptr[i]);
+    }
   }
 }
 
@@ -117,4 +118,67 @@ void exports_all_types_example_no_return_func(bool) {
   // This function intentionally does nothing and has no return value.
   // It can be used to demonstrate a function that performs an action
   // without returning any data.
+}
+
+// complex-variant-func logic:
+//  - empty      -> stays empty
+//  - number(n)  -> number(n+1)
+//  - floating(f)   -> floating(f*2)
+//  - big(u)     -> big(u-1)
+//  - text(s)    -> text(s + "!")
+//  - bytes(b)   -> bytes(b concatenated with 0xff)
+//  - pair(r)    -> pair({ x: r.x-1, y: r.y+1 })
+void exports_all_types_example_complex_variant_func(
+    all_types_example_complex_union_t* input,
+    all_types_example_complex_union_t* ret) {
+  switch (input->tag) {
+    case ALL_TYPES_EXAMPLE_COMPLEX_UNION_EMPTY: {
+      ret->tag = ALL_TYPES_EXAMPLE_COMPLEX_UNION_EMPTY;
+      break;
+    }
+    case ALL_TYPES_EXAMPLE_COMPLEX_UNION_NUMBER: {
+      ret->tag = ALL_TYPES_EXAMPLE_COMPLEX_UNION_NUMBER;
+      ret->val.number = input->val.number + 1;
+      break;
+    }
+    case ALL_TYPES_EXAMPLE_COMPLEX_UNION_FLOATING: {
+      ret->tag = ALL_TYPES_EXAMPLE_COMPLEX_UNION_FLOATING;
+      ret->val.floating = input->val.floating * 2.0f;
+      break;
+    }
+    case ALL_TYPES_EXAMPLE_COMPLEX_UNION_BIG: {
+      ret->tag = ALL_TYPES_EXAMPLE_COMPLEX_UNION_BIG;
+      ret->val.big = input->val.big - 1;
+      break;
+    }
+    case ALL_TYPES_EXAMPLE_COMPLEX_UNION_TEXT: {
+      ret->tag = ALL_TYPES_EXAMPLE_COMPLEX_UNION_TEXT;
+      // Reallocate with space for '!'
+      size_t new_len = input->val.text.len + 1;
+      ret->val.text.len = new_len;
+      ret->val.text.ptr = (uint8_t*)malloc(new_len);
+      memcpy(ret->val.text.ptr, input->val.text.ptr, input->val.text.len);
+      ret->val.text.ptr[new_len - 1] = '!';
+      break;
+    }
+    case ALL_TYPES_EXAMPLE_COMPLEX_UNION_BYTES: {
+      ret->tag = ALL_TYPES_EXAMPLE_COMPLEX_UNION_BYTES;
+      size_t new_len = input->val.bytes.len + 1;
+      ret->val.bytes.len = new_len;
+      ret->val.bytes.ptr = (uint8_t*)malloc(new_len);
+      memcpy(ret->val.bytes.ptr, input->val.bytes.ptr, input->val.bytes.len);
+      ret->val.bytes.ptr[new_len - 1] = 0xff;
+      break;
+    }
+    case ALL_TYPES_EXAMPLE_COMPLEX_UNION_PAIR: {
+      ret->tag = ALL_TYPES_EXAMPLE_COMPLEX_UNION_PAIR;
+      ret->val.pair.x = input->val.pair.x - 1;
+      ret->val.pair.y = input->val.pair.y + 1;
+      break;
+    }
+    default: {
+      ret->tag = ALL_TYPES_EXAMPLE_COMPLEX_UNION_EMPTY;
+      break;
+    }
+  }
 }

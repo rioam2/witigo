@@ -57,7 +57,7 @@ The generated package will include all necessary bindings and types to interact 
     - [x] `list`
     - [x] `record`
     - [x] `option`
-    - [ ] `variant`
+    - [x] `variant`
     - [ ] `result`
     - [ ] `tuple`
     - [ ] `flags`
@@ -71,7 +71,7 @@ The generated package will include all necessary bindings and types to interact 
     - [x] `list`
     - [x] `record`
     - [x] `option`
-    - [ ] `variant`
+    - [x] `variant`
     - [ ] `result`
     - [ ] `tuple`
     - [ ] `flags`

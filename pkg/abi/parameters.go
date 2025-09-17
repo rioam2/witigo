@@ -46,7 +46,9 @@ func WriteParameter(opts AbiOptions, value any) (params []Parameter, free AbiFre
 		return WriteParameterList(opts, value)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if isStructRecordType(rv) {
+		if isStructVariantType(rv) {
+			return WriteParameterVariant(opts, value)
+		} else if isStructRecordType(rv) {
 			return WriteParameterRecord(opts, value)
 		} else if isStructOptionType(rv) {
 			return WriteParameterOption(opts, value)

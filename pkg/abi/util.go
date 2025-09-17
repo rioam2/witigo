@@ -7,6 +7,8 @@ import (
 	"reflect"
 )
 
+const panicVariantMissingDiscriminant = "Variant struct must contain at least a discriminant field"
+
 // AbiFreeCallback is a returned function from write operations that can be used to free resources.
 type AbiFreeCallback func() error
 
@@ -42,7 +44,12 @@ func Read(opts AbiOptions, ptr uint64, result any) error {
 		return ReadList(opts, ptr, result)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if isStructRecordType(rv) {
+		if rv.NumField() == 0 {
+			return nil
+		}
+		if isStructVariantType(rv) {
+			return ReadVariant(opts, ptr, result)
+		} else if isStructRecordType(rv) {
 			return ReadRecord(opts, ptr, result)
 		} else if isStructOptionType(rv) {
 			return ReadOption(opts, ptr, result)
@@ -83,7 +90,12 @@ func Write(opts AbiOptions, value any, ptrHint *uint64) (ptr uint64, free AbiFre
 		return WriteList(opts, value, ptrHint)
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if isStructRecordType(rv) {
+		if isAnonymousEmptyStruct(rv) { // empty struct{} case payload
+			return 0, AbiFreeCallbackNoop, nil
+		}
+		if isStructVariantType(rv) {
+			return WriteVariant(opts, value, ptrHint)
+		} else if isStructRecordType(rv) {
 			return WriteRecord(opts, value, ptrHint)
 		} else if isStructOptionType(rv) {
 			return WriteOption(opts, value, ptrHint)
@@ -120,7 +132,25 @@ func SizeOf(value any) uint64 {
 		return 8
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if isStructRecordType(rv) {
+		if isAnonymousEmptyStruct(rv) {
+			return 0
+		}
+		if isStructVariantType(rv) {
+			// Variant size = size(discriminant) + max(size(case_i)) aligned to max variant alignment.
+			if rv.NumField() == 0 {
+				panic(panicVariantMissingDiscriminant)
+			}
+			discriminantSize := SizeOf(rv.Field(0).Interface())
+			maxCaseSize := uint64(0)
+			for i := 1; i < rv.NumField(); i++ {
+				field := rv.Field(i)
+				fieldSize := SizeOf(field.Interface())
+				if fieldSize > maxCaseSize {
+					maxCaseSize = fieldSize
+				}
+			}
+			return AlignTo(discriminantSize+maxCaseSize, maxVariantAlignment(rv))
+		} else if isStructRecordType(rv) {
 			size := uint64(0)
 			for i := 0; i < rv.NumField(); i++ {
 				field := rv.Field(i)
@@ -166,7 +196,15 @@ func AlignmentOf(value any) uint64 {
 		return 8
 	case reflect.Struct:
 		structName := rv.Type().Name()
-		if isStructRecordType(rv) {
+		if isAnonymousEmptyStruct(rv) {
+			return 1
+		}
+		if isStructVariantType(rv) {
+			if rv.NumField() == 0 {
+				panic(panicVariantMissingDiscriminant)
+			}
+			return maxVariantAlignment(rv)
+		} else if isStructRecordType(rv) {
 			alignment := uint64(1)
 			for i := 0; i < rv.NumField(); i++ {
 				field := rv.Field(i)
@@ -209,6 +247,53 @@ func isStructRecordType(rv reflect.Value) bool {
 	}
 	structName := rv.Type().Name()
 	return len(structName) >= 6 && structName[len(structName)-6:] == "Record"
+}
+
+func isStructVariantType(rv reflect.Value) bool {
+	if rv.Kind() != reflect.Struct {
+		return false
+	}
+	name := rv.Type().Name()
+	if len(name) < 7 || name[len(name)-7:] != "Variant" { // suffix Variant
+		return false
+	}
+	// Minimal structural check: first field named Type
+	if rv.NumField() == 0 {
+		return false
+	}
+	return rv.Type().Field(0).Name == "Type"
+}
+
+// maxVariantAlignment returns the maximum alignment across the discriminant and
+// all (non-empty) case payload fields of a variant struct. The caller MUST pass
+// a reflect.Value satisfying isStructVariantType. Panics if the variant is
+// malformed (e.g. zero fields).
+func maxVariantAlignment(rv reflect.Value) uint64 {
+	if rv.NumField() == 0 {
+		panic("Variant struct must contain at least a discriminant field")
+	}
+	// Start with discriminant alignment
+	maxAlign := AlignmentOf(rv.Field(0).Interface())
+	for i := 1; i < rv.NumField(); i++ {
+		f := rv.Field(i)
+		// Skip empty struct case payloads – they contribute nothing
+		if f.Kind() == reflect.Struct && f.Type().NumField() == 0 {
+			continue
+		}
+		a := AlignmentOf(f.Interface())
+		if a > maxAlign {
+			maxAlign = a
+		}
+	}
+	return maxAlign
+}
+
+func isAnonymousEmptyStruct(rv reflect.Value) bool {
+	if rv.Kind() != reflect.Struct {
+		return false
+	}
+	structName := rv.Type().Name()
+	return rv.NumField() == 0 && structName == ""
 }
 
 func isStructOptionType(rv reflect.Value) bool {

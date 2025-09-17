@@ -9,6 +9,8 @@ wit_bindgen(
 add_executable(all_types_example component.cpp ${bindings})
 target_link_libraries(all_types_example PRIVATE wasi_sdk_reactor_module)
 set_target_properties(all_types_example PROPERTIES OUTPUT_NAME "all_types_example.wasm")
+target_compile_options(all_types_example PRIVATE -Wno-narrowing)
+
 
 # Add WIT bindings to interface/include directory
 target_include_directories(all_types_example PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
