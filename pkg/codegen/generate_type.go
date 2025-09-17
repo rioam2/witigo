@@ -2,7 +2,6 @@ package codegen
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/golang-cz/textcase"
 	"github.com/moznion/gowrtr/generator"
@@ -46,11 +45,6 @@ func GenerateTypenameFromType(w wit.WitType) string {
 		}
 		panic(fmt.Sprintf("Unknown WIT type kind: %s", kind))
 	}
-}
-
-func discriminantSize(n int) int {
-	bits := math.Ceil(math.Log2(float64(n))/8) * 8
-	return int(bits)
 }
 
 func generatePrimitiveTypenameFromType(w wit.WitType) string {
